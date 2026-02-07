@@ -2,41 +2,43 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keepy - Keep Going</title>
-<link rel="icon" href="icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Keepy iOS</title>
 <style>
+/* --- Body i ogólny styl --- */
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #0f172a;
-  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  background: #f2f2f7;
+  color: #1c1c1e;
   margin: 0;
   padding: 16px;
 }
 .header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .mascot {
-  width: 200px;
-  height: 200px;
+  width: 160px;
+  height: 160px;
   margin: 0 auto 12px;
-  display: block;
   border-radius: 50%;
   object-fit: cover;
+  border: 2px solid #0a84ff;
 }
-h1 { 
-  margin: 8px 0 4px 0;
-  font-size: 36px;
+h1 {
+  margin: 8px 0 4px;
+  font-size: 28px;
+  color: #0a84ff;
 }
 .motto {
-  font-size: 16px;
-  color: #94a3b8;
-  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #8e8e93;
+  margin: 0 0 8px;
 }
 h2 {
-  font-size: 22px;
-  margin: 16px 0;
+  font-size: 20px;
+  margin: 12px 0;
+  color: #1c1c1e;
 }
 .add {
   position: fixed;
@@ -44,67 +46,63 @@ h2 {
   right: 24px;
   width: 56px;
   height: 56px;
-  border-radius: 50%;
-  background: #22c55e;
-  color: black;
+  border-radius: 28px;
+  background: #0a84ff;
+  color: white;
   font-size: 32px;
   border: none;
   font-weight: bold;
   cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 .habit {
-  background: #020617;
+  background: white;
   padding: 16px;
-  border-radius: 14px;
+  border-radius: 20px;
   margin-bottom: 12px;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
-.habit.flash { animation: flash 0.5s; }
-@keyframes flash {0% {background:#020617;}50% {background:#22c55e;}100% {background:#020617;}}
-.habit.fade-out { animation: fadeOut 0.5s forwards; }
-@keyframes fadeOut { to {opacity:0; transform: scale(0.8);} }
-
 .habit-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.name { font-size: 18px; cursor: pointer; }
-.streak { font-size: 22px; }
+.name { font-size: 18px; cursor: pointer; color:#1c1c1e; }
+.streak { font-size: 20px; font-weight:bold; color:#ff9500; }
 .actions button {
   margin-left: 6px;
   border: none;
-  border-radius: 8px;
-  padding: 6px 10px;
+  border-radius: 14px;
+  padding: 8px 12px;
   font-size: 14px;
   cursor: pointer;
 }
-.done { background: #22c55e; }
-.delete { background: #ef4444; color: white; }
-.freeze { background: #facc15; color: black; }
+.done { background: #34c759; color:white; }
+.delete { background: #ff3b30; color: white; }
+.freeze { background: #ffcc00; color: black; }
 .toggle-cal {
-  background: #3b82f6;
+  background: #0a84ff;
   color: white;
   margin-top: 8px;
   width: 100%;
-  padding: 8px;
+  padding: 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: 14px;
   cursor: pointer;
   font-size: 14px;
 }
 .progress-container {
-  background: #1e293b;
-  border-radius: 4px;
+  background: #e5e5ea;
+  border-radius: 12px;
   height: 8px;
   margin-top: 8px;
 }
 .progress {
   height: 8px;
-  background: #22c55e;
-  border-radius: 4px;
+  background: #34c759;
+  border-radius: 12px;
   width: 0%;
   transition: width 0.3s;
 }
@@ -113,36 +111,41 @@ h2 {
 .calendar.show { max-height: 400px; overflow: visible; }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .calendar-header button {
-  background: #1e293b;
-  color: white;
+  background: #f2f2f7;
+  color: #0a84ff;
   border: none;
-  border-radius: 4px;
+  border-radius: 12px;
   padding: 4px 12px;
   cursor: pointer;
+  font-weight:bold;
 }
 .day {
   width: 14.2%;
-  height: 24px;
+  height: 28px;
   margin-bottom: 2px;
   text-align: center;
-  line-height: 24px;
+  line-height: 28px;
   font-size: 12px;
-  border-radius: 4px;
-  background: #111827;
+  border-radius: 6px;
+  background: #f2f2f7;
   cursor: pointer;
 }
-.day.done { background: #22c55e; color: black; }
-.day.freeze { background: #facc15; color: black; }
-.day.missed { background: #ef4444; color: white; }
+.day.done { background: #34c759; color: white; }
+.day.freeze { background: #ffcc00; color: black; }
+.day.missed { background: #ff3b30; color: white; }
 #stats {
   margin-bottom:16px;
   display:flex;
   justify-content:space-around;
   text-align:center;
+  background:white;
+  padding:12px;
+  border-radius:20px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 #stats div { flex:1; }
-#stats div div:first-child { font-size:18px; color:#94a3b8; }
-#stats div div:last-child { font-size:22px; font-weight:bold; }
+#stats div div:first-child { font-size:14px; color:#8e8e93; }
+#stats div div:last-child { font-size:18px; font-weight:bold; color:#1c1c1e; }
 </style>
 </head>
 <body>
@@ -193,21 +196,26 @@ function save(){
 function daysBetween(a,b){ return Math.floor((new Date(a)-new Date(b))/86400000); }
 function wasYesterdayValid(h){ return (h.datesDone && h.datesDone.includes(yesterday())) || (h.freezeDates && h.freezeDates.includes(yesterday())); }
 
+// --- Nowa średnia dzienna: liczba wszystkich pass wykonanych dzisiaj
 function updateStats(){
-  let totalDone = 0;
+  const doneDates = {}; // klucz = data, wartość = liczba wykonanych pass
   let maxStreak = 0;
-  let totalDaysTracked = 0;
+  let totalDone = 0;
 
-  habits.forEach(h => {
-    if(h.datesDone) totalDone += h.datesDone.length;
-    if(h.streak > maxStreak) maxStreak = h.streak;
-    if(h.lastDate){
-      const firstDate = h.datesDone && h.datesDone.length ? h.datesDone[0] : today();
-      totalDaysTracked += daysBetween(today(), firstDate) + 1;
+  habits.forEach(h=>{
+    if(h.datesDone) {
+      h.datesDone.forEach(d=>{
+        if(!doneDates[d]) doneDates[d]=0;
+        doneDates[d]++;
+      });
+      totalDone += h.datesDone.length;
     }
+    if(h.streak > maxStreak) maxStreak = h.streak;
   });
 
-  const averageDaily = totalDaysTracked ? (totalDone / totalDaysTracked).toFixed(2) : 0;
+  // obliczamy średnią dzienną jako średnią liczby pass na dzień
+  const totalDays = Object.keys(doneDates).length || 1; // aby nie dzielić przez 0
+  const averageDaily = (totalDone/totalDays).toFixed(2);
 
   document.getElementById("totalDone").textContent = totalDone;
   document.getElementById("maxStreak").textContent = maxStreak;
@@ -297,32 +305,9 @@ function renderCalendarAndReplace(habit, oldContainer, offset){
   oldContainer.replaceWith(newCal);
 }
 
-function notifyIfNotDone(h){
-  if(Notification.permission==="granted"){
-    const doneToday = h.datesDone && h.datesDone.includes(today());
-    if(!doneToday && !h.freeze){
-      new Notification(`Nie zapomnij o "${h.name}" dzisiaj!`);
-    }
-  }
-}
-
 function render(){
   list.innerHTML="";
   habits.forEach((h,i)=>{
-    if(!h.freeze && h.lastDate){
-      const diff = daysBetween(today(), h.lastDate);
-      if(diff>=2){
-        let allDaysCovered = true;
-        for(let d=1; d<diff; d++){
-          const checkStr = new Date(h.lastDate); checkStr.setDate(checkStr.getDate()+d); checkStr = checkStr.toISOString().slice(0,10);
-          if(!(h.datesDone && h.datesDone.includes(checkStr)) && !(h.freezeDates && h.freezeDates.includes(checkStr))){
-            allDaysCovered=false; break;
-          }
-        }
-        if(!allDaysCovered) h.streak=0;
-      }
-    }
-
     const div=document.createElement("div"); div.className="habit";
 
     const doneToday = h.datesDone && h.datesDone.includes(today());
@@ -363,31 +348,22 @@ function render(){
 
     div.querySelector(".done").onclick=()=>{
       if(freeze || doneToday) return;
-      if(!confirm(`Czy na pewno chcesz oznaczyć "${h.name}" jako zrobione?`)) return;
-
       if(!h.datesDone) h.datesDone=[];
       h.datesDone.push(today());
-      h.streak = wasYesterdayValid(h) ? h.streak+1 : 1;
+      h.streak = Math.max(h.streak+1,1);
       h.lastDate=today();
       save();
-      div.classList.add("flash");
-      setTimeout(()=>div.classList.remove("flash"),500);
       render();
     };
 
     div.querySelector(".delete").onclick=()=>{
-      if(!confirm(`Czy na pewno chcesz usunąć passę "${h.name}"?`)) return;
-      div.classList.add("fade-out");
-      setTimeout(()=>{
-        archive.push(h);
-        habits.splice(i,1);
-        save();
-        render();
-      },500);
+      archive.push(h);
+      habits.splice(i,1);
+      save();
+      render();
     };
 
     div.querySelector(".freeze").onclick=()=>{
-      if(!confirm(`Czy na pewno chcesz ${freeze ? "odmrozić" : "zamrozić"} passę "${h.name}"?`)) return;
       h.freeze = !h.freeze;
       if(!h.freezeDates) h.freezeDates=[];
       if(h.freeze) h.freezeDates.push(today());
@@ -397,8 +373,6 @@ function render(){
     };
 
     list.appendChild(div);
-
-    notifyIfNotDone(h);
   });
 
   updateStats();
@@ -412,12 +386,7 @@ addBtn.onclick=()=>{
   render();
 };
 
-if(Notification.permission !== "granted"){
-  Notification.requestPermission();
-}
-
 render();
 </script>
-
 </body>
 </html>
