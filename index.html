@@ -5,135 +5,129 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Passy</title>
 
-  <link rel="manifest" href="manifest.json">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-
   <style>
     body {
-      margin: 0;
       font-family: system-ui, -apple-system, sans-serif;
       background: #0f172a;
       color: white;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      margin: 0;
       padding: 16px;
-      font-size: 20px;
-      font-weight: bold;
+    }
+    h1 {
+      text-align: center;
     }
     .add {
-      font-size: 28px;
-      cursor: pointer;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #22c55e;
+      color: black;
+      font-size: 32px;
+      border: none;
+      font-weight: bold;
     }
-    .list {
-      padding: 16px;
-      display: grid;
-      gap: 12px;
-    }
-    .card {
+    .habit {
       background: #020617;
       padding: 16px;
       border-radius: 14px;
-    }
-    .top {
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .streak {
-      font-size: 36px;
-      margin: 8px 0;
+    .name {
+      font-size: 18px;
     }
-    button {
-      width: 100%;
-      padding: 10px;
+    .streak {
+      font-size: 22px;
+    }
+    .actions button {
+      margin-left: 6px;
       border: none;
-      border-radius: 10px;
-      font-weight: bold;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+    .done {
       background: #22c55e;
-      margin-top: 8px;
     }
     .delete {
-      background: transparent;
-      color: #ef4444;
-      font-size: 18px;
-      width: auto;
+      background: #ef4444;
+      color: white;
     }
   </style>
 </head>
 <body>
 
-<header>
-  <span>Twoje passy</span>
-  <span class="add" id="addBtn">＋</span>
-</header>
+<h1>🔥 Moje passy</h1>
+<div id="list"></div>
 
-<div class="list" id="list"></div>
+<button class="add" id="addBtn">+</button>
 
 <script>
-  const listEl = document.getElementById("list");
+  const list = document.getElementById("list");
   const addBtn = document.getElementById("addBtn");
 
-  const today = () => new Date().toISOString().slice(0, 10);
-  const load = () => JSON.parse(localStorage.getItem("habits")) || [];
-  const save = (h) => localStorage.setItem("habits", JSON.stringify(h));
+  const today = () => new Date().toISOString().slice(0,10);
 
-  let habits = load();
+  let habits = JSON.parse(localStorage.getItem("habits")) || [];
 
   function daysBetween(a, b) {
     return Math.floor((new Date(a) - new Date(b)) / 86400000);
   }
 
-  function refresh() {
-    listEl.innerHTML = "";
+  function save() {
+    localStorage.setItem("habits", JSON.stringify(habits));
+  }
 
-    habits.forEach(habit => {
-      if (habit.lastDate) {
-        const diff = daysBetween(today(), habit.lastDate);
-        if (diff > 1) habit.streak = 0;
+  function render() {
+    list.innerHTML = "";
+    habits.forEach((h, i) => {
+      if (h.lastDate) {
+        const diff = daysBetween(today(), h.lastDate);
+        if (diff > 1) h.streak = 0;
       }
 
-      const card = document.createElement("div");
-      card.className = "card";
-
-      card.innerHTML = `
-        <div class="top">
-          <strong>${habit.name}</strong>
-          <button class="delete">🗑</button>
+      const div = document.createElement("div");
+      div.className = "habit";
+      div.innerHTML = `
+        <div>
+          <div class="name">${h.name}</div>
+          <div class="streak">🔥 ${h.streak}</div>
         </div>
-        <div class="streak">🔥 ${habit.streak}</div>
-        <button>Zrobione dziś</button>
+        <div class="actions">
+          <button class="done">✓</button>
+          <button class="delete">✕</button>
+        </div>
       `;
 
-      const doneBtn = card.querySelector("button");
-      const deleteBtn = card.querySelector(".delete");
+      div.querySelector(".done").onclick = () => {
+        if (h.lastDate === today()) return;
 
-      doneBtn.onclick = () => {
-        if (habit.lastDate === today()) return;
-
-        if (habit.lastDate && daysBetween(today(), habit.lastDate) === 1) {
-          habit.streak++;
+        if (h.lastDate && daysBetween(today(), h.lastDate) === 1) {
+          h.streak++;
         } else {
-          habit.streak = 1;
+          h.streak = 1;
         }
 
-        habit.lastDate = today();
-        save(habits);
-        refresh();
+        h.lastDate = today();
+        save();
+        render();
       };
 
-      deleteBtn.onclick = () => {
-        habits = habits.filter(h => h.id !== habit.id);
-        save(habits);
-        refresh();
+      div.querySelector(".delete").onclick = () => {
+        if (confirm("Usunąć tę passę?")) {
+          habits.splice(i, 1);
+          save();
+          render();
+        }
       };
 
-      listEl.appendChild(card);
+      list.appendChild(div);
     });
-
-    save(habits);
   }
 
   addBtn.onclick = () => {
@@ -141,18 +135,18 @@
     if (!name) return;
 
     habits.push({
-      id: Date.now(),
       name,
       streak: 0,
       lastDate: null
     });
 
-    save(habits);
-    refresh();
+    save();
+    render();
   };
 
-  refresh();
+  render();
 </script>
 
 </body>
 </html>
+
