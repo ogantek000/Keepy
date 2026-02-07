@@ -14,22 +14,28 @@ body {
   margin: 0;
   padding: 16px;
 }
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.mascot {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 12px;
+  display: block;
+}
 h1 { 
-  text-align: center; 
-  margin-bottom: 4px;
+  margin: 8px 0 4px 0;
+  font-size: 32px;
 }
 .motto {
-  text-align: center;
   font-size: 14px;
   color: #94a3b8;
-  margin-top: 0;
-  margin-bottom: 8px;
+  margin: 0 0 8px 0;
 }
 h2 {
-  text-align: center;
   font-size: 20px;
-  margin-top: 24px;
-  margin-bottom: 16px;
+  margin: 16px 0;
 }
 .add {
   position: fixed;
@@ -118,13 +124,29 @@ h2 {
 </head>
 <body>
 
-<h1>Keepy</h1>
-<p class="motto">Keep Going</p>
-<h2>🔥 Moje passy</h2>
+<div class="header">
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" class="mascot" id="mascot" alt="Keepy Mascot">
+  <h1>Keepy</h1>
+  <p class="motto">Keep Going</p>
+  <h2>🔥 Moje passy</h2>
+</div>
+
 <div id="list"></div>
 <button class="add" id="addBtn">+</button>
 
 <script>
+// Załaduj maskotke
+const mascotImg = document.getElementById('mascot');
+fetch('/mnt/user-data/uploads/Gemini_Generated_Image_3xtul13xtul13xtu.png')
+  .then(res => res.blob())
+  .then(blob => {
+    mascotImg.src = URL.createObjectURL(blob);
+  })
+  .catch(() => {
+    // Fallback - pokaż emoji jeśli obrazek nie załaduje się
+    mascotImg.style.display = 'none';
+  });
+
 const list = document.getElementById("list");
 const addBtn = document.getElementById("addBtn");
 const today = () => new Date().toISOString().slice(0,10);
@@ -141,7 +163,6 @@ function daysBetween(a,b){ return Math.floor((new Date(a)-new Date(b))/86400000)
 
 function wasYesterdayValid(h) {
   const yesterdayStr = yesterday();
-  // Sprawdź czy wczoraj było done lub freeze
   const yesterdayDone = h.datesDone && h.datesDone.includes(yesterdayStr);
   const yesterdayFreeze = h.freezeDates && h.freezeDates.includes(yesterdayStr);
   return yesterdayDone || yesterdayFreeze;
@@ -176,7 +197,6 @@ function renderCalendar(h, monthOffset=0){
   const firstDay = new Date(refDate.getFullYear(), refDate.getMonth(),1).getDay();
   const daysInMonth = new Date(refDate.getFullYear(), refDate.getMonth()+1,0).getDate();
 
-  // wypełnienie pustych dni na początku miesiąca
   for(let i=0;i<(firstDay===0?6:firstDay-1);i++){ 
     const empty = document.createElement("div"); 
     empty.className="day"; 
@@ -189,20 +209,15 @@ function renderCalendar(h, monthOffset=0){
     dayDiv.className="day"; dayDiv.textContent=d;
 
     const isDone = h.datesDone && h.datesDone.includes(dayStr);
-    const isFreeze = h.freezeDates && h.freezeDates.includes(dayStr) && !isDone; // freeze tylko jeśli NIE jest done
+    const isFreeze = h.freezeDates && h.freezeDates.includes(dayStr) && !isDone;
     
-    // Dzień jest missed tylko jeśli:
-    // 1. Jest przed ostatnim done/freeze
-    // 2. Sam nie jest done ani freeze
     let isMissed = false;
     if (!isDone && !isFreeze) {
-      // Znajdź wszystkie daty z done i freeze
       const allValidDates = [
         ...(h.datesDone || []),
         ...(h.freezeDates || [])
       ].sort();
       
-      // Jeśli są jakieś daty i ten dzień jest przed najnowszą
       if (allValidDates.length > 0) {
         const latestValidDate = allValidDates[allValidDates.length - 1];
         if (new Date(dayStr) < new Date(latestValidDate) && new Date(dayStr) < new Date()) {
@@ -230,11 +245,9 @@ function renderCalendar(h, monthOffset=0){
 function render(){
   list.innerHTML="";
   habits.forEach((h,i)=>{
-    // Aktualizacja streak - sprawdź czy nie jest zerwany
     if(!h.freeze && h.lastDate){
       const diff = daysBetween(today(), h.lastDate);
       if(diff>=2) {
-        // Sprawdź czy między lastDate a dzisiaj były freeze
         let allDaysCovered = true;
         for(let d=1; d<diff; d++){
           const checkDate = new Date(h.lastDate);
@@ -281,14 +294,12 @@ function render(){
     let calendarDiv = renderCalendar(h, 0);
     div.appendChild(calendarDiv);
 
-    // toggle kalendarza
     toggleBtn.onclick=()=>{
       const cal = calendarDiv.querySelector(".calendar");
       cal.classList.toggle("show");
       toggleBtn.textContent = cal.classList.contains("show") ? "📅 Ukryj kalendarz" : "📅 Pokaż kalendarz";
     };
 
-    // Obsługa przycisków nawigacji miesiąca
     const leftBtn = calendarDiv.querySelector(".calendar-header button:first-child");
     const rightBtn = calendarDiv.querySelector(".calendar-header button:last-child");
     
@@ -320,7 +331,6 @@ function render(){
       newRightBtn.onclick = rightBtn.onclick;
     };
 
-    // DONE z confirm
     div.querySelector(".done").onclick=()=>{
       if(freeze) return;
       if(doneToday) return;
@@ -329,7 +339,6 @@ function render(){
       if(!h.datesDone) h.datesDone=[];
       h.datesDone.push(today());
       
-      // Zwiększ streak jeśli wczoraj było done lub freeze
       if(wasYesterdayValid(h)) {
         h.streak++;
       } else {
@@ -343,7 +352,6 @@ function render(){
       render();
     };
 
-    // DELETE z confirm
     div.querySelector(".delete").onclick=()=>{
       if(!confirm(`Czy na pewno chcesz usunąć passę "${h.name}"?`)) return;
       div.classList.add("fade-out");
@@ -354,14 +362,12 @@ function render(){
       },500);
     };
 
-    // FREEZE z confirm + zaznaczenie dnia żółtym
     div.querySelector(".freeze").onclick=()=>{
       if(!confirm(`Czy na pewno chcesz ${freeze ? "odmrozić" : "zamrozić"} passę "${h.name}"?`)) return;
       h.freeze = !h.freeze;
       if(!h.freezeDates) h.freezeDates=[];
       if(h.freeze) {
         h.freezeDates.push(today());
-        // Aktualizuj lastDate gdy zamrażamy
         if(!h.lastDate || new Date(today()) > new Date(h.lastDate)) {
           h.lastDate = today();
         }
