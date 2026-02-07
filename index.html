@@ -1,111 +1,158 @@
-
+<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Zimny Prysznic</title>
+  <title>Passy</title>
 
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Passa">
 
   <style>
     body {
+      margin: 0;
       font-family: system-ui, -apple-system, sans-serif;
       background: #0f172a;
       color: white;
+    }
+    header {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
+      padding: 16px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .add {
+      font-size: 28px;
+      cursor: pointer;
+    }
+    .list {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
     }
     .card {
       background: #020617;
-      padding: 24px;
-      border-radius: 16px;
-      width: 300px;
-      text-align: center;
+      padding: 16px;
+      border-radius: 14px;
     }
-    button {
-      margin-top: 16px;
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      border: none;
-      border-radius: 12px;
-      background: #22c55e;
-      color: black;
-      font-weight: bold;
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .streak {
-      font-size: 48px;
-      margin: 16px 0;
+      font-size: 36px;
+      margin: 8px 0;
     }
-    .info {
-      opacity: 0.7;
-      font-size: 14px;
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      background: #22c55e;
+      margin-top: 8px;
+    }
+    .delete {
+      background: transparent;
+      color: #ef4444;
+      font-size: 18px;
+      width: auto;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Zimny prysznic</h2>
-    <div class="streak" id="streak">🔥 0</div>
-    <button id="doneBtn">Zrobione dziś</button>
-    <p class="info" id="info"></p>
-  </div>
 
-  <script>
-    const streakEl = document.getElementById("streak");
-    const infoEl = document.getElementById("info");
-    const btn = document.getElementById("doneBtn");
+<header>
+  <span>Twoje passy</span>
+  <span class="add" id="addBtn">＋</span>
+</header>
 
-    const today = () => new Date().toISOString().slice(0, 10);
+<div class="list" id="list"></div>
 
-    let streak = Number(localStorage.getItem("streak")) || 0;
-    let lastDate = localStorage.getItem("lastDate");
+<script>
+  const listEl = document.getElementById("list");
+  const addBtn = document.getElementById("addBtn");
 
-    function daysBetween(a, b) {
-      return Math.floor(
-        (new Date(a) - new Date(b)) / (1000 * 60 * 60 * 24)
-      );
-    }
+  const today = () => new Date().toISOString().slice(0, 10);
+  const load = () => JSON.parse(localStorage.getItem("habits")) || [];
+  const save = (h) => localStorage.setItem("habits", JSON.stringify(h));
 
-    function refresh() {
-      if (lastDate) {
-        const diff = daysBetween(today(), lastDate);
-        if (diff > 1) {
-          streak = 0;
-          localStorage.setItem("streak", 0);
-        }
-        if (diff === 0) {
-          btn.disabled = true;
-          infoEl.textContent = "Już zaliczone na dziś";
-        }
-      }
-      streakEl.textContent = "🔥 " + streak;
-    }
+  let habits = load();
 
-    btn.onclick = () => {
-      if (lastDate === today()) return;
+  function daysBetween(a, b) {
+    return Math.floor((new Date(a) - new Date(b)) / 86400000);
+  }
 
-      if (lastDate && daysBetween(today(), lastDate) === 1) {
-        streak++;
-      } else {
-        streak = 1;
+  function refresh() {
+    listEl.innerHTML = "";
+
+    habits.forEach(habit => {
+      if (habit.lastDate) {
+        const diff = daysBetween(today(), habit.lastDate);
+        if (diff > 1) habit.streak = 0;
       }
 
-      lastDate = today();
-      localStorage.setItem("streak", streak);
-      localStorage.setItem("lastDate", lastDate);
+      const card = document.createElement("div");
+      card.className = "card";
 
-      refresh();
-    };
+      card.innerHTML = `
+        <div class="top">
+          <strong>${habit.name}</strong>
+          <button class="delete">🗑</button>
+        </div>
+        <div class="streak">🔥 ${habit.streak}</div>
+        <button>Zrobione dziś</button>
+      `;
 
+      const doneBtn = card.querySelector("button");
+      const deleteBtn = card.querySelector(".delete");
+
+      doneBtn.onclick = () => {
+        if (habit.lastDate === today()) return;
+
+        if (habit.lastDate && daysBetween(today(), habit.lastDate) === 1) {
+          habit.streak++;
+        } else {
+          habit.streak = 1;
+        }
+
+        habit.lastDate = today();
+        save(habits);
+        refresh();
+      };
+
+      deleteBtn.onclick = () => {
+        habits = habits.filter(h => h.id !== habit.id);
+        save(habits);
+        refresh();
+      };
+
+      listEl.appendChild(card);
+    });
+
+    save(habits);
+  }
+
+  addBtn.onclick = () => {
+    const name = prompt("Nazwa nowej passy:");
+    if (!name) return;
+
+    habits.push({
+      id: Date.now(),
+      name,
+      streak: 0,
+      lastDate: null
+    });
+
+    save(habits);
     refresh();
-  </script>
+  };
+
+  refresh();
+</script>
+
 </body>
 </html>
