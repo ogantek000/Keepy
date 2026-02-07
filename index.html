@@ -169,8 +169,8 @@ function renderCalendar(h, monthOffset=0){
     const dayDiv = document.createElement("div");
     dayDiv.className="day"; dayDiv.textContent=d;
 
-    const isFreeze = h.freezeDates && h.freezeDates.includes(dayStr);
     const isDone = h.datesDone && h.datesDone.includes(dayStr);
+    const isFreeze = h.freezeDates && h.freezeDates.includes(dayStr) && !isDone; // freeze tylko jeśli NIE jest done
     
     // Dzień jest missed tylko jeśli:
     // 1. Jest przed ostatnim done/freeze
@@ -192,10 +192,10 @@ function renderCalendar(h, monthOffset=0){
       }
     }
 
-    if(isFreeze) {
-      dayDiv.classList.add("freeze");
-    } else if(isDone) {
+    if(isDone) {
       dayDiv.classList.add("done");
+    } else if(isFreeze) {
+      dayDiv.classList.add("freeze");
     } else if(isMissed) {
       dayDiv.classList.add("missed");
     }
