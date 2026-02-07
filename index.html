@@ -1,78 +1,8 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Passy</title>
-
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0f172a;
-      color: white;
-      margin: 0;
-      padding: 16px;
-    }
-    h1 {
-      text-align: center;
-    }
-    .add {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: #22c55e;
-      color: black;
-      font-size: 32px;
-      border: none;
-      font-weight: bold;
-    }
-    .habit {
-      background: #020617;
-      padding: 16px;
-      border-radius: 14px;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .name {
-      font-size: 18px;
-    }
-    .streak {
-      font-size: 22px;
-    }
-    .actions button {
-      margin-left: 6px;
-      border: none;
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 14px;
-    }
-    .done {
-      background: #22c55e;
-    }
-    .delete {
-      background: #ef4444;
-      color: white;
-    }
-  </style>
-</head>
-<body>
-
-<h1>🔥 Moje passy</h1>
-<div id="list"></div>
-
-<button class="add" id="addBtn">+</button>
-
 <script>
   const list = document.getElementById("list");
   const addBtn = document.getElementById("addBtn");
 
   const today = () => new Date().toISOString().slice(0,10);
-
   let habits = JSON.parse(localStorage.getItem("habits")) || [];
 
   function daysBetween(a, b) {
@@ -85,11 +15,14 @@
 
   function render() {
     list.innerHTML = "";
+
     habits.forEach((h, i) => {
       if (h.lastDate) {
         const diff = daysBetween(today(), h.lastDate);
         if (diff > 1) h.streak = 0;
       }
+
+      const doneToday = h.lastDate === today();
 
       const div = document.createElement("div");
       div.className = "habit";
@@ -99,13 +32,15 @@
           <div class="streak">🔥 ${h.streak}</div>
         </div>
         <div class="actions">
-          <button class="done">✓</button>
+          <button class="done" ${doneToday ? "disabled" : ""}>
+            ${doneToday ? "Zrobione ✔️" : "Zrobione dziś"}
+          </button>
           <button class="delete">✕</button>
         </div>
       `;
 
       div.querySelector(".done").onclick = () => {
-        if (h.lastDate === today()) return;
+        if (doneToday) return;
 
         if (h.lastDate && daysBetween(today(), h.lastDate) === 1) {
           h.streak++;
@@ -134,19 +69,10 @@
     const name = prompt("Nazwa nowej passy:");
     if (!name) return;
 
-    habits.push({
-      name,
-      streak: 0,
-      lastDate: null
-    });
-
+    habits.push({ name, streak: 0, lastDate: null });
     save();
     render();
   };
 
   render();
 </script>
-
-</body>
-</html>
-
