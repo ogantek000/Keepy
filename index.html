@@ -51,7 +51,9 @@ h2 {
   border: none;
   font-weight: bold;
   cursor: pointer;
+  transition: transform 0.15s ease;
 }
+.add:active { transform: scale(0.95); }
 .habit {
   background: rgba(255,255,255,0.05);
   padding: 16px;
@@ -59,7 +61,13 @@ h2 {
   margin-bottom: 12px;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, background 0.25s ease;
+  opacity: 0;
+  transform: translateY(20px);
+}
+.habit.show {
+  opacity: 1;
+  transform: translateY(0);
 }
 .habit-header {
   display: flex;
@@ -75,7 +83,9 @@ h2 {
   padding: 6px 10px;
   font-size: 14px;
   cursor: pointer;
+  transition: transform 0.1s ease;
 }
+.actions button:active { transform: scale(0.95); }
 .done { background: #22c55e; }
 .delete { background: #ef4444; color: white; }
 .freeze { background: #facc15; color: black; }
@@ -89,7 +99,9 @@ h2 {
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
+  transition: transform 0.1s ease;
 }
+.toggle-cal:active { transform: scale(0.97); }
 .progress-container {
   background: rgba(255,255,255,0.05);
   border-radius: 12px;
@@ -102,11 +114,21 @@ h2 {
   background: #3b82f6;
   border-radius: 12px;
   width: 0%;
-  transition: width 0.3s;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .calendar-container { margin-top: 8px; }
-.calendar { display: flex; flex-wrap: wrap; overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
-.calendar.show { max-height: 400px; overflow: visible; }
+.calendar { 
+  display: flex; 
+  flex-wrap: wrap; 
+  overflow: hidden; 
+  max-height: 0; 
+  opacity: 0; 
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+}
+.calendar.show {
+  max-height: 400px; 
+  opacity: 1;
+}
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; visibility:hidden; }
 .calendar-header button {
   background: #1e293b;
@@ -127,7 +149,9 @@ h2 {
   border-radius: 6px;
   background: #111827;
   cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
 }
+.day:hover { transform: scale(1.05); }
 .day.done { background: #22c55e; color: black; }
 .day.freeze { background: #facc15; color: black; }
 .day.missed { background: #ef4444; color: white; }
@@ -174,11 +198,9 @@ h2 {
 <button class="add" id="addBtn">+</button>
 
 <script>
-// --- JS trackera ---
 const list = document.getElementById("list");
 const addBtn = document.getElementById("addBtn");
 const today = () => new Date().toISOString().slice(0,10);
-const yesterday = () => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0,10); };
 
 let habits = JSON.parse(localStorage.getItem("keepy-habits")) || [];
 let archive = JSON.parse(localStorage.getItem("keepy-archive")) || [];
@@ -195,13 +217,10 @@ function updateStats(){
 
   habits.forEach(h=>{
     if(h.datesDone){
-      h.datesDone.forEach(d=>{
-        if(!doneDates[d]) doneDates[d]=0;
-        doneDates[d]++;
-      });
+      h.datesDone.forEach(d=>{ doneDates[d]=(doneDates[d]||0)+1; });
       totalDone += h.datesDone.length;
     }
-    if(h.streak > maxStreak) maxStreak = h.streak;
+    if(h.streak>maxStreak) maxStreak=h.streak;
   });
 
   const totalDays = Object.keys(doneDates).length || 1;
@@ -227,22 +246,15 @@ function renderCalendar(h, monthOffset=0){
   refDate.setMonth(refDate.getMonth()+monthOffset);
   title.textContent = refDate.toLocaleString('pl-PL',{month:'long', year:'numeric'});
 
-  calHeader.appendChild(left);
-  calHeader.appendChild(title);
-  calHeader.appendChild(right);
+  calHeader.appendChild(left); calHeader.appendChild(title); calHeader.appendChild(right);
   container.appendChild(calHeader);
 
-  const calDiv = document.createElement("div");
-  calDiv.className = "calendar";
+  const calDiv = document.createElement("div"); calDiv.className="calendar";
 
   const firstDay = (new Date(refDate.getFullYear(), refDate.getMonth(),1).getDay()+6)%7;
   const daysInMonth = new Date(refDate.getFullYear(), refDate.getMonth()+1,0).getDate();
 
-  for(let i=0;i<firstDay;i++){ 
-    const empty = document.createElement("div"); 
-    empty.className="day"; 
-    calDiv.appendChild(empty); 
-  }
+  for(let i=0;i<firstDay;i++){ const empty=document.createElement("div"); empty.className="day"; calDiv.appendChild(empty); }
 
   for(let d=1; d<=daysInMonth; d++){
     const dayStr = `${refDate.getFullYear()}-${String(refDate.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -251,12 +263,12 @@ function renderCalendar(h, monthOffset=0){
 
     const isDone = h.datesDone && h.datesDone.includes(dayStr);
     const isFreeze = h.freezeDates && h.freezeDates.includes(dayStr) && !isDone;
-    let isMissed = false;
+    let isMissed=false;
 
     if(!isDone && !isFreeze){
-      const allValid = [...(h.datesDone||[]),...(h.freezeDates||[])].sort();
+      const allValid=[...(h.datesDone||[]),...(h.freezeDates||[])].sort();
       if(allValid.length>0){
-        const latest = allValid[allValid.length-1];
+        const latest=allValid[allValid.length-1];
         if(new Date(dayStr)<new Date(latest) && new Date(dayStr)<new Date()) isMissed=true;
       }
     }
@@ -266,7 +278,7 @@ function renderCalendar(h, monthOffset=0){
     else if(isMissed) dayDiv.classList.add("missed");
 
     dayDiv.onclick = () => {
-      if(isDone) h.datesDone = h.datesDone.filter(d => d!==dayStr);
+      if(isDone) h.datesDone=h.datesDone.filter(d=>d!==dayStr);
       else { if(!h.datesDone) h.datesDone=[]; h.datesDone.push(dayStr);}
       save(); render();
     }
@@ -275,7 +287,7 @@ function renderCalendar(h, monthOffset=0){
   }
 
   container.appendChild(calDiv);
-  container.monthOffset = monthOffset;
+  container.monthOffset=monthOffset;
 
   left.onclick = ()=>{ renderCalendarAndReplace(h, container, -1); };
   right.onclick = ()=>{ renderCalendarAndReplace(h, container, +1); };
@@ -284,7 +296,7 @@ function renderCalendar(h, monthOffset=0){
 }
 
 function renderCalendarAndReplace(habit, oldContainer, offset){
-  const newCal = renderCalendar(habit, oldContainer.monthOffset+offset);
+  const newCal=renderCalendar(habit, oldContainer.monthOffset+offset);
   oldContainer.replaceWith(newCal);
 }
 
@@ -315,21 +327,19 @@ function render(){
       </div>
     `;
 
-    const toggleBtn = document.createElement("button");
-    toggleBtn.className = "toggle-cal";
-    toggleBtn.textContent = "📅 Pokaż kalendarz";
+    const toggleBtn=document.createElement("button");
+    toggleBtn.className="toggle-cal";
+    toggleBtn.textContent="📅 Pokaż kalendarz";
     div.appendChild(toggleBtn);
 
-    let calendarDiv = renderCalendar(h,0);
+    let calendarDiv=renderCalendar(h,0);
     div.appendChild(calendarDiv);
 
     toggleBtn.onclick=()=> {
-      const cal = calendarDiv.querySelector(".calendar");
+      const cal=calendarDiv.querySelector(".calendar");
       cal.classList.toggle("show");
       toggleBtn.textContent = cal.classList.contains("show") ? "📅 Ukryj kalendarz" : "📅 Pokaż kalendarz";
-
-      // Włączamy przewijanie miesięcy dopiero po rozwinięciu
-      const btns = calendarDiv.querySelectorAll(".calendar-header button");
+      const btns=calendarDiv.querySelectorAll(".calendar-header button");
       btns.forEach(b=>b.disabled=!cal.classList.contains("show"));
     };
 
@@ -344,6 +354,7 @@ function render(){
     };
 
     div.querySelector(".delete").onclick=()=>{
+      if(!confirm(`Czy napewno chcesz usunąć passę "${h.name}"?`)) return;
       archive.push(h);
       habits.splice(i,1);
       save();
@@ -351,6 +362,7 @@ function render(){
     };
 
     div.querySelector(".freeze").onclick=()=>{
+      if(!confirm(`Czy napewno chcesz zamrozić/odmrozić passę "${h.name}"?`)) return;
       h.freeze = !h.freeze;
       if(!h.freezeDates) h.freezeDates=[];
       if(h.freeze) h.freezeDates.push(today());
@@ -360,6 +372,7 @@ function render(){
     };
 
     list.appendChild(div);
+    setTimeout(()=>div.classList.add("show"),10);
   });
 
   updateStats();
@@ -378,5 +391,3 @@ render();
 </script>
 </body>
 </html>
-
-
