@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Passy z Rozwijanym Kalendarzem i Freeze</title>
+<title>Passy z Potwierdzeniem i Freeze</title>
 
 <style>
 body {
@@ -52,7 +52,7 @@ h1 { text-align: center; }
   justify-content: space-between;
   align-items: center;
 }
-.name { font-size: 18px; }
+.name { font-size: 18px; cursor: pointer; }
 .streak { font-size: 22px; }
 .actions button {
   margin-left: 6px;
@@ -68,6 +68,7 @@ h1 { text-align: center; }
 .calendar-container { margin-top: 8px; }
 .calendar { display: flex; flex-wrap: wrap; overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
 .calendar.show { max-height: 400px; }
+.calendar.freeze-mode .day { background: #facc15 !important; color: black !important; }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .day {
   width: 14.2%;
@@ -125,6 +126,8 @@ function renderCalendar(h, monthOffset=0){
   const calDiv = document.createElement("div");
   calDiv.className = "calendar show";
 
+  if(h.freeze) calDiv.classList.add("freeze-mode");
+
   const firstDay = new Date(refDate.getFullYear(), refDate.getMonth(),1).getDay();
   const daysInMonth = new Date(refDate.getFullYear(), refDate.getMonth()+1,0).getDate();
 
@@ -147,7 +150,6 @@ function renderCalendar(h, monthOffset=0){
 function render(){
   list.innerHTML="";
   habits.forEach((h,i)=>{
-    // reset po 2 dniach jeśli nie freeze
     if(!h.freeze && h.lastDate){
       const diff = daysBetween(today(), h.lastDate);
       if(diff>=2) h.streak=0;
@@ -175,15 +177,17 @@ function render(){
       </div>
     `;
 
-    // dodaj rozwijany kalendarz
     const calendarDiv = renderCalendar(h);
     div.appendChild(calendarDiv);
-    div.querySelector(".name").style.cursor="pointer";
+
     div.querySelector(".name").onclick=()=>calendarDiv.querySelector(".calendar").classList.toggle("show");
 
-    // done
+    // DONE z confirm
     div.querySelector(".done").onclick=()=>{
-      if(doneToday || freeze) return;
+      if(freeze) return;
+      if(doneToday) return;
+      if(!confirm(`Czy na pewno chcesz oznaczyć "${h.name}" jako zrobione?`)) return;
+
       if(!h.datesDone) h.datesDone=[];
       h.datesDone.push(today());
       if(h.lastDate && daysBetween(today(),h.lastDate)===1) h.streak++; else h.streak=1;
@@ -194,8 +198,9 @@ function render(){
       render();
     };
 
-    // delete
+    // DELETE z confirm
     div.querySelector(".delete").onclick=()=>{
+      if(!confirm(`Czy na pewno chcesz usunąć passę "${h.name}"?`)) return;
       div.classList.add("fade-out");
       setTimeout(()=>{
         habits.splice(i,1);
@@ -204,8 +209,9 @@ function render(){
       },500);
     };
 
-    // freeze
+    // FREEZE z confirm i kalendarz żółty
     div.querySelector(".freeze").onclick=()=>{
+      if(!confirm(`Czy na pewno chcesz ${freeze ? "odmrozić" : "zamrozić"} passę "${h.name}"?`)) return;
       h.freeze = !h.freeze;
       save();
       render();
