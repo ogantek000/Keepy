@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Keepy - Keep Going</title>
-<link rel="icon" href="bro.jpg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🔥</text></svg>">
-
+<link rel="icon" href="icon.png">
 <style>
 body {
   font-family: system-ui, -apple-system, sans-serif;
@@ -23,6 +22,8 @@ body {
   height: 120px;
   margin: 0 auto 12px;
   display: block;
+  border-radius: 50%;
+  object-fit: cover;
 }
 h1 { 
   margin: 8px 0 4px 0;
@@ -59,7 +60,6 @@ h2 {
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
-  opacity: 1;
 }
 .habit.flash { animation: flash 0.5s; }
 @keyframes flash {0% {background:#020617;}50% {background:#22c55e;}100% {background:#020617;}}
@@ -97,7 +97,7 @@ h2 {
 }
 .calendar-container { margin-top: 8px; }
 .calendar { display: flex; flex-wrap: wrap; overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
-.calendar.show { max-height: 400px; }
+.calendar.show { max-height: 400px; overflow: visible; }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .calendar-header button {
   background: #1e293b;
@@ -125,7 +125,7 @@ h2 {
 <body>
 
 <div class="header">
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" class="mascot" id="mascot" alt="Keepy Mascot">
+  <img src="bro.jpg" class="mascot" id="mascot" alt="Keepy Mascot">
   <h1>Keepy</h1>
   <p class="motto">Keep Going</p>
   <h2>🔥 Moje passy</h2>
@@ -135,18 +135,6 @@ h2 {
 <button class="add" id="addBtn">+</button>
 
 <script>
-// Załaduj maskotke
-const mascotImg = document.getElementById('mascot');
-fetch('/mnt/user-data/uploads/Gemini_Generated_Image_3xtul13xtul13xtu.png')
-  .then(res => res.blob())
-  .then(blob => {
-    mascotImg.src = URL.createObjectURL(blob);
-  })
-  .catch(() => {
-    // Fallback - pokaż emoji jeśli obrazek nie załaduje się
-    mascotImg.style.display = 'none';
-  });
-
 const list = document.getElementById("list");
 const addBtn = document.getElementById("addBtn");
 const today = () => new Date().toISOString().slice(0,10);
@@ -160,13 +148,7 @@ let habits = JSON.parse(localStorage.getItem("keepy-habits")) || [];
 
 function save(){ localStorage.setItem("keepy-habits", JSON.stringify(habits)); }
 function daysBetween(a,b){ return Math.floor((new Date(a)-new Date(b))/86400000); }
-
-function wasYesterdayValid(h) {
-  const yesterdayStr = yesterday();
-  const yesterdayDone = h.datesDone && h.datesDone.includes(yesterdayStr);
-  const yesterdayFreeze = h.freezeDates && h.freezeDates.includes(yesterdayStr);
-  return yesterdayDone || yesterdayFreeze;
-}
+function wasYesterdayValid(h){ return (h.datesDone && h.datesDone.includes(yesterday())) || (h.freezeDates && h.freezeDates.includes(yesterday())); }
 
 function renderCalendar(h, monthOffset=0){
   const container = document.createElement("div");
@@ -183,9 +165,6 @@ function renderCalendar(h, monthOffset=0){
   refDate.setMonth(refDate.getMonth()+monthOffset);
   title.textContent = refDate.toLocaleString('pl-PL',{month:'long', year:'numeric'});
 
-  left.onclick = ()=>{ render(); };
-  right.onclick = ()=>{ render(); };
-
   calHeader.appendChild(left);
   calHeader.appendChild(title);
   calHeader.appendChild(right);
@@ -194,52 +173,51 @@ function renderCalendar(h, monthOffset=0){
   const calDiv = document.createElement("div");
   calDiv.className = "calendar";
 
-  const firstDay = new Date(refDate.getFullYear(), refDate.getMonth(),1).getDay();
+  const firstDay = (new Date(refDate.getFullYear(), refDate.getMonth(),1).getDay()+6)%7;
   const daysInMonth = new Date(refDate.getFullYear(), refDate.getMonth()+1,0).getDate();
 
-  for(let i=0;i<(firstDay===0?6:firstDay-1);i++){ 
+  for(let i=0;i<firstDay;i++){ 
     const empty = document.createElement("div"); 
     empty.className="day"; 
     calDiv.appendChild(empty); 
   }
 
-  for(let d=1;d<=daysInMonth;d++){
+  for(let d=1; d<=daysInMonth; d++){
     const dayStr = `${refDate.getFullYear()}-${String(refDate.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayDiv = document.createElement("div");
     dayDiv.className="day"; dayDiv.textContent=d;
 
     const isDone = h.datesDone && h.datesDone.includes(dayStr);
     const isFreeze = h.freezeDates && h.freezeDates.includes(dayStr) && !isDone;
-    
     let isMissed = false;
-    if (!isDone && !isFreeze) {
-      const allValidDates = [
-        ...(h.datesDone || []),
-        ...(h.freezeDates || [])
-      ].sort();
-      
-      if (allValidDates.length > 0) {
-        const latestValidDate = allValidDates[allValidDates.length - 1];
-        if (new Date(dayStr) < new Date(latestValidDate) && new Date(dayStr) < new Date()) {
-          isMissed = true;
-        }
+
+    if(!isDone && !isFreeze){
+      const allValid = [...(h.datesDone||[]),...(h.freezeDates||[])].sort();
+      if(allValid.length>0){
+        const latest = allValid[allValid.length-1];
+        if(new Date(dayStr)<new Date(latest) && new Date(dayStr)<new Date()) isMissed=true;
       }
     }
 
-    if(isDone) {
-      dayDiv.classList.add("done");
-    } else if(isFreeze) {
-      dayDiv.classList.add("freeze");
-    } else if(isMissed) {
-      dayDiv.classList.add("missed");
-    }
+    if(isDone) dayDiv.classList.add("done");
+    else if(isFreeze) dayDiv.classList.add("freeze");
+    else if(isMissed) dayDiv.classList.add("missed");
 
     calDiv.appendChild(dayDiv);
   }
 
   container.appendChild(calDiv);
   container.monthOffset = monthOffset;
+
+  left.onclick = ()=>{ renderCalendarAndReplace(h, container, -1); };
+  right.onclick = ()=>{ renderCalendarAndReplace(h, container, +1); };
+
   return container;
+}
+
+function renderCalendarAndReplace(habit, oldContainer, offset){
+  const newCal = renderCalendar(habit, oldContainer.monthOffset+offset);
+  oldContainer.replaceWith(newCal);
 }
 
 function render(){
@@ -247,25 +225,19 @@ function render(){
   habits.forEach((h,i)=>{
     if(!h.freeze && h.lastDate){
       const diff = daysBetween(today(), h.lastDate);
-      if(diff>=2) {
+      if(diff>=2){
         let allDaysCovered = true;
         for(let d=1; d<diff; d++){
-          const checkDate = new Date(h.lastDate);
-          checkDate.setDate(checkDate.getDate() + d);
-          const checkStr = checkDate.toISOString().slice(0,10);
-          const hasFreeze = h.freezeDates && h.freezeDates.includes(checkStr);
-          const hasDone = h.datesDone && h.datesDone.includes(checkStr);
-          if(!hasFreeze && !hasDone) {
-            allDaysCovered = false;
-            break;
+          const checkStr = new Date(h.lastDate); checkStr.setDate(checkStr.getDate()+d); checkStr = checkStr.toISOString().slice(0,10);
+          if(!(h.datesDone && h.datesDone.includes(checkStr)) && !(h.freezeDates && h.freezeDates.includes(checkStr))){
+            allDaysCovered=false; break;
           }
         }
-        if(!allDaysCovered) h.streak = 0;
+        if(!allDaysCovered) h.streak=0;
       }
     }
 
-    const div = document.createElement("div");
-    div.className="habit";
+    const div=document.createElement("div"); div.className="habit";
 
     const doneToday = h.datesDone && h.datesDone.includes(today());
     const freeze = h.freeze===true;
@@ -291,60 +263,22 @@ function render(){
     toggleBtn.textContent = "📅 Pokaż kalendarz";
     div.appendChild(toggleBtn);
 
-    let calendarDiv = renderCalendar(h, 0);
+    let calendarDiv = renderCalendar(h,0);
     div.appendChild(calendarDiv);
 
-    toggleBtn.onclick=()=>{
+    toggleBtn.onclick=()=> {
       const cal = calendarDiv.querySelector(".calendar");
       cal.classList.toggle("show");
       toggleBtn.textContent = cal.classList.contains("show") ? "📅 Ukryj kalendarz" : "📅 Pokaż kalendarz";
     };
 
-    const leftBtn = calendarDiv.querySelector(".calendar-header button:first-child");
-    const rightBtn = calendarDiv.querySelector(".calendar-header button:last-child");
-    
-    leftBtn.onclick = () => {
-      const newCalendar = renderCalendar(h, calendarDiv.monthOffset - 1);
-      div.replaceChild(newCalendar, calendarDiv);
-      calendarDiv = newCalendar;
-      if(toggleBtn.textContent.includes("Ukryj")) {
-        calendarDiv.querySelector(".calendar").classList.add("show");
-      }
-      
-      const newLeftBtn = calendarDiv.querySelector(".calendar-header button:first-child");
-      const newRightBtn = calendarDiv.querySelector(".calendar-header button:last-child");
-      newLeftBtn.onclick = leftBtn.onclick;
-      newRightBtn.onclick = rightBtn.onclick;
-    };
-    
-    rightBtn.onclick = () => {
-      const newCalendar = renderCalendar(h, calendarDiv.monthOffset + 1);
-      div.replaceChild(newCalendar, calendarDiv);
-      calendarDiv = newCalendar;
-      if(toggleBtn.textContent.includes("Ukryj")) {
-        calendarDiv.querySelector(".calendar").classList.add("show");
-      }
-      
-      const newLeftBtn = calendarDiv.querySelector(".calendar-header button:first-child");
-      const newRightBtn = calendarDiv.querySelector(".calendar-header button:last-child");
-      newLeftBtn.onclick = leftBtn.onclick;
-      newRightBtn.onclick = rightBtn.onclick;
-    };
-
     div.querySelector(".done").onclick=()=>{
-      if(freeze) return;
-      if(doneToday) return;
+      if(freeze || doneToday) return;
       if(!confirm(`Czy na pewno chcesz oznaczyć "${h.name}" jako zrobione?`)) return;
 
       if(!h.datesDone) h.datesDone=[];
       h.datesDone.push(today());
-      
-      if(wasYesterdayValid(h)) {
-        h.streak++;
-      } else {
-        h.streak = 1;
-      }
-      
+      h.streak = wasYesterdayValid(h) ? h.streak+1 : 1;
       h.lastDate=today();
       save();
       div.classList.add("flash");
@@ -366,12 +300,8 @@ function render(){
       if(!confirm(`Czy na pewno chcesz ${freeze ? "odmrozić" : "zamrozić"} passę "${h.name}"?`)) return;
       h.freeze = !h.freeze;
       if(!h.freezeDates) h.freezeDates=[];
-      if(h.freeze) {
-        h.freezeDates.push(today());
-        if(!h.lastDate || new Date(today()) > new Date(h.lastDate)) {
-          h.lastDate = today();
-        }
-      }
+      if(h.freeze) h.freezeDates.push(today());
+      if(!h.lastDate || new Date(today())>new Date(h.lastDate)) h.lastDate=today();
       save();
       render();
     };
@@ -393,5 +323,3 @@ render();
 
 </body>
 </html>
-
-
