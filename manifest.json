@@ -1,12 +1,17 @@
 {
-  "name": "Passa",
-  "short_name": "Passa",
-  "start_url": ".",
+  "name": "Keepy – Keep Going",
+  "short_name": "Keepy",
+  "description": "Śledź swoje pasy i nawyki każdego dnia",
+  "start_url": "/index.html",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#020617",
-  "icons": "icon.png"
+  "background_color": "#0f172a",
+  "theme_color": "#033d9c",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    },
+  
+  ]
 }
-
-
-
