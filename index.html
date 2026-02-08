@@ -121,12 +121,12 @@ h1{margin:6px 0 2px;color:var(--accent)}
   position:relative;
   border-left:4px solid transparent;
   scroll-margin-top:20px;
+  overflow:visible;
+  z-index:1;
 }
 .habit.show{opacity:1;transform:none}
 .habit.dragging{opacity:0.5;transform:scale(0.98)}
-.habit:active{
-  transform:scale(0.98);
-}
+.habit.menu-open{z-index:200}
 
 .habit.ice::after{
   content:"";position:absolute;inset:0;
@@ -413,12 +413,14 @@ h1{margin:6px 0 2px;color:var(--accent)}
   <div><div>Średnia dzienna</div><div id="avgDaily">0</div></div>
 </div>
 
-<div class="quote-box" id="quoteBox">
+<div class="quote-box" id="quoteBox" data-section="quote" draggable="true">
+  <div class="drag-section-handle" style="cursor:move;text-align:center;color:var(--text-secondary);font-size:16px;margin-bottom:8px">⋮⋮</div>
   <div class="quote-text" id="quoteText"></div>
   <button class="quote-refresh" id="quoteRefresh">🔄</button>
 </div>
 
-<div class="charts">
+<div class="charts" data-section="heatmap" draggable="true">
+  <div class="drag-section-handle" style="cursor:move;text-align:center;color:var(--text-secondary);font-size:16px;margin-bottom:8px">⋮⋮</div>
   <h3 style="font-size:16px;color:var(--text-secondary);margin:0 0 8px;cursor:pointer" id="heatMapToggle">
     📊 Aktywność (ostatnie 28 dni) <span style="float:right">▼</span>
   </h3>
@@ -428,14 +430,14 @@ h1{margin:6px 0 2px;color:var(--accent)}
   </div>
 </div>
 
-<div class="category-stats" id="categoryStats" style="display:none">
+<div class="category-stats" id="categoryStats" style="display:none" data-section="categories" draggable="true">
+  <div class="drag-section-handle" style="cursor:move;text-align:center;color:var(--text-secondary);font-size:16px;margin-bottom:8px">⋮⋮</div>
   <h3 style="font-size:16px;color:var(--text-secondary);margin:0 0 12px;cursor:pointer" id="categoryStatsToggle">
     📈 Statystyki per kategoria <span style="float:right">▼</span>
   </h3>
   <div style="display:none;margin-bottom:8px" id="categorySortButtons">
     <button class="btn-secondary" id="sortByName" style="padding:6px 12px;margin-right:6px;font-size:13px">Sortuj: Nazwa</button>
     <button class="btn-secondary" id="sortByDays" style="padding:6px 12px;font-size:13px">Sortuj: Dni</button>
-    <p style="font-size:12px;color:var(--text-secondary);margin:8px 0 0">💡 Możesz też przeciągać kategorie (⋮⋮) żeby zmienić kolejność</p>
   </div>
   <div id="categoryStatsList" style="display:none"></div>
 </div>
@@ -669,61 +671,21 @@ function renderCategoryStats(sortBy){
   
   let entries=Object.entries(window.categoryData);
   
-  // If custom order exists, use it
-  const savedOrder=localStorage.getItem('categoryOrder');
-  if(savedOrder && sortBy==='custom'){
-    const order=JSON.parse(savedOrder);
-    entries.sort((a,b)=>{
-      const indexA=order.indexOf(a[0]);
-      const indexB=order.indexOf(b[0]);
-      if(indexA===-1) return 1;
-      if(indexB===-1) return -1;
-      return indexA-indexB;
-    });
-  }else if(sortBy==='name'){
+  if(sortBy==='name'){
     entries.sort((a,b)=>getCategoryLabel(a[0]).localeCompare(getCategoryLabel(b[0])));
   }else{
     entries.sort((a,b)=>b[1].days-a[1].days);
   }
   
   categoryStatsList.innerHTML='';
-  let draggedCatIndex=null;
   
-  entries.forEach(([cat,data],idx)=>{
+  entries.forEach(([cat,data])=>{
     const div=document.createElement("div");
     div.className="category-stat-item";
-    div.draggable=true;
-    div.style.cursor="move";
     div.innerHTML=`
-      <span>⋮⋮ ${getCategoryLabel(cat)}</span>
+      <span>${getCategoryLabel(cat)}</span>
       <span style="color:var(--accent);font-weight:bold">${data.days} dni (${data.count} pass${data.count===1?'a':''})</span>
     `;
-    
-    div.ondragstart=()=>{
-      draggedCatIndex=idx;
-      div.style.opacity='0.5';
-    };
-    div.ondragend=()=>{
-      div.style.opacity='1';
-    };
-    div.ondragover=(e)=>{
-      e.preventDefault();
-    };
-    div.ondrop=(e)=>{
-      e.preventDefault();
-      if(draggedCatIndex!==null && draggedCatIndex!==idx){
-        const temp=entries[draggedCatIndex];
-        entries.splice(draggedCatIndex,1);
-        entries.splice(idx,0,temp);
-        
-        // Save custom order
-        const newOrder=entries.map(e=>e[0]);
-        localStorage.setItem('categoryOrder',JSON.stringify(newOrder));
-        
-        renderCategoryStats('custom');
-      }
-    };
-    
     categoryStatsList.append(div);
   });
 }
@@ -862,7 +824,6 @@ function render(){
           </div>
         </div>
         <div class="menu">
-          <button class="closeMenu">❌ Zamknij</button>
           <button class="editHist">✏️ Edytuj historię</button>
           <button class="renameHabit">✍️ Zmień nazwę</button>
           <button class="changeCat">🏷️ Zmień kategorię</button>
@@ -900,11 +861,11 @@ function render(){
     moreBtn.onclick=(e)=>{
       e.stopPropagation();
       document.querySelectorAll('.menu').forEach(m=>m.style.display='none');
+      document.querySelectorAll('.habit').forEach(h=>h.classList.remove('menu-open'));
       menu.style.display=menu.style.display==="block"?"none":"block";
-    };
-    
-    div.querySelector(".closeMenu").onclick=()=>{
-      menu.style.display="none";
+      if(menu.style.display==="block"){
+        div.classList.add('menu-open');
+      }
     };
 
     const toggle=document.createElement("button");
@@ -1147,6 +1108,86 @@ quotesModal.onclick=(e)=>{
 
 // Initialize quote
 updateQuote();
+
+// Drag & drop for sections
+let draggedSection=null;
+const sections=[
+  document.getElementById('quoteBox'),
+  document.querySelector('.charts'),
+  document.getElementById('categoryStats')
+];
+
+function setupSectionDragDrop(){
+  sections.forEach((section,idx)=>{
+    const handle=section.querySelector('.drag-section-handle');
+    if(!handle) return;
+    
+    handle.ondragstart=(e)=>{
+      draggedSection=section;
+      section.style.opacity='0.5';
+    };
+    
+    handle.ondragend=()=>{
+      section.style.opacity='1';
+      draggedSection=null;
+    };
+    
+    section.ondragover=(e)=>{
+      e.preventDefault();
+    };
+    
+    section.ondrop=(e)=>{
+      e.preventDefault();
+      if(draggedSection && draggedSection!==section){
+        const parent=section.parentNode;
+        const allSections=Array.from(parent.children).filter(el=>
+          el.dataset.section || el===draggedSection
+        );
+        const draggedIdx=allSections.indexOf(draggedSection);
+        const targetIdx=allSections.indexOf(section);
+        
+        if(draggedIdx<targetIdx){
+          parent.insertBefore(draggedSection,section.nextSibling);
+        }else{
+          parent.insertBefore(draggedSection,section);
+        }
+        
+        // Save order
+        const order=Array.from(parent.children)
+          .filter(el=>el.dataset.section)
+          .map(el=>el.dataset.section);
+        localStorage.setItem('sectionOrder',JSON.stringify(order));
+      }
+    };
+  });
+}
+
+// Restore section order
+function restoreSectionOrder(){
+  const savedOrder=localStorage.getItem('sectionOrder');
+  if(!savedOrder) return;
+  
+  const order=JSON.parse(savedOrder);
+  const statsDiv=document.getElementById('stats');
+  
+  order.forEach(sectionName=>{
+    const section=document.querySelector(`[data-section="${sectionName}"]`);
+    if(section && statsDiv.nextSibling){
+      statsDiv.parentNode.insertBefore(section,statsDiv.nextSibling);
+    }
+  });
+}
+
+restoreSectionOrder();
+setupSectionDragDrop();
+
+// Close menu when clicking outside
+document.addEventListener('click',(e)=>{
+  if(!e.target.closest('.menu') && !e.target.closest('.more')){
+    document.querySelectorAll('.menu').forEach(m=>m.style.display='none');
+    document.querySelectorAll('.habit').forEach(h=>h.classList.remove('menu-open'));
+  }
+});
 
 render();
 </script>
