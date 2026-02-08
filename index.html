@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Keepy – Keep Going</title>
-<link rel="icon.png" href="icon.png">
+<link rel="icon" href="icon.png">
 
 <style>
 body{
@@ -54,13 +54,10 @@ h1{margin:8px 0 4px;color:#3b82f6}
 }
 .done{background:#22c55e}
 .freeze{background:#facc15}
-.more{
-  background:#1e293b;color:white;font-size:18px
-}
+.more{background:#1e293b;color:white;font-size:18px}
 
-/* MENU 3 KROPKI */
 .menu{
-  position:absolute;right:12px;top:48px;
+  position:absolute;right:12px;top:52px;
   background:#020617;border-radius:10px;
   overflow:hidden;display:none;
   box-shadow:0 10px 30px rgba(0,0,0,.5)
@@ -72,12 +69,11 @@ h1{margin:8px 0 4px;color:#3b82f6}
 }
 .menu button:hover{background:rgba(255,255,255,.08)}
 
-.toggle-cal,.edit-cal{
+.toggle-cal{
   width:100%;margin-top:8px;
   padding:8px;border:none;border-radius:8px;
   background:#3b82f6;color:white
 }
-.edit-cal.active{background:#f97316}
 
 .calendar-container{margin-top:8px}
 .calendar-header{
@@ -129,7 +125,7 @@ h1{margin:8px 0 4px;color:#3b82f6}
 <body>
 
 <div class="header">
-  <img src="bro" class="mascot">
+  <img src="bro.jpg" class="mascot">
   <h1>Keepy</h1>
   <p class="motto">Keep Going</p>
 </div>
@@ -147,7 +143,6 @@ h1{margin:8px 0 4px;color:#3b82f6}
 const list=document.getElementById("list");
 const DAY=86400000;
 
-/* LOKALNA DATA */
 function today(){
   const d=new Date();
   d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
@@ -267,13 +262,21 @@ function render(){
     `;
 
     const menu=div.querySelector(".menu");
-    const more=div.querySelector(".more");
-
-    more.onclick=()=>{
+    div.querySelector(".more").onclick=()=>{
       menu.style.display=menu.style.display==="block"?"none":"block";
     };
 
+    const toggle=document.createElement("button");
+    toggle.className="toggle-cal";
+    toggle.textContent="📅 Pokaż kalendarz";
+
     const {cont,cal}=renderCalendar(h);
+
+    toggle.onclick=()=>{
+      cal.classList.toggle("show");
+      toggle.textContent=cal.classList.contains("show")
+        ?"📅 Ukryj kalendarz":"📅 Pokaż kalendarz";
+    };
 
     div.querySelector(".editHist").onclick=()=>{
       cal.classList.toggle("editing");
@@ -306,7 +309,7 @@ function render(){
       save();render();
     };
 
-    div.append(cont);
+    div.append(toggle,cont);
     list.append(div);
     setTimeout(()=>div.classList.add("show"),10);
   });
