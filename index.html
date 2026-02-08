@@ -69,15 +69,22 @@ h1{margin:8px 0 4px;color:#3b82f6}
   background:#1e293b;color:white;border:none;
   border-radius:4px;padding:4px 10px
 }
-.calendar.show .calendar-header{visibility:visible}
 
 .calendar{
   display:flex;flex-wrap:wrap;
   max-height:0;opacity:0;overflow:hidden;
   transition:.35s;pointer-events:none
 }
-.calendar.show{max-height:400px;opacity:1}
-.calendar.editing{pointer-events:auto;outline:2px dashed #f97316}
+.calendar.show{
+  max-height:400px;opacity:1
+}
+.calendar.show ~ .calendar-header{
+  visibility:visible
+}
+.calendar.editing{
+  pointer-events:auto;
+  outline:2px dashed #f97316
+}
 
 .day{
   width:14.2%;height:28px;
@@ -118,11 +125,16 @@ h1{margin:8px 0 4px;color:#3b82f6}
 
 <script>
 const list=document.getElementById("list");
-const today=()=>new Date().toISOString().slice(0,10);
 const DAY=86400000;
 
-let habits=JSON.parse(localStorage.getItem("keepy"))||[];
+/* ✅ POPRAWNA LOKALNA DATA */
+function today(){
+  const d=new Date();
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
 
+let habits=JSON.parse(localStorage.getItem("keepy"))||[];
 const save=()=>localStorage.setItem("keepy",JSON.stringify(habits));
 
 function updateStats(){
@@ -144,6 +156,9 @@ function renderCalendar(h){
   const cont=document.createElement("div");
   cont.className="calendar-container";
 
+  const cal=document.createElement("div");
+  cal.className="calendar";
+
   const header=document.createElement("div");
   header.className="calendar-header";
 
@@ -158,10 +173,6 @@ function renderCalendar(h){
   title.textContent=ref.toLocaleString("pl-PL",{month:"long",year:"numeric"});
 
   header.append(l,title,r);
-  cont.append(header);
-
-  const cal=document.createElement("div");
-  cal.className="calendar";
 
   const first=(new Date(ref.getFullYear(),ref.getMonth(),1).getDay()+6)%7;
   const days=new Date(ref.getFullYear(),ref.getMonth()+1,0).getDate();
@@ -170,12 +181,15 @@ function renderCalendar(h){
 
   for(let d=1;d<=days;d++){
     const date=new Date(ref.getFullYear(),ref.getMonth(),d);
-    const ds=date.toISOString().slice(0,10);
-    const div=document.createElement("div");
-    div.className="day";div.textContent=d;
+    const ds=new Date(date.getTime()-date.getTimezoneOffset()*60000)
+              .toISOString().slice(0,10);
 
-    const diff=(new Date(today())-date)/DAY;
+    const diff=(new Date(today())-new Date(ds))/DAY;
     const editable=diff>=0 && diff<=7;
+
+    const div=document.createElement("div");
+    div.className="day";
+    div.textContent=d;
 
     if(h.datesDone.includes(ds))div.classList.add("done");
     else if(h.freezeDates.includes(ds))div.classList.add("freeze");
@@ -204,7 +218,7 @@ function renderCalendar(h){
   l.onclick=()=>{h.monthOffset--;save();render()};
   r.onclick=()=>{h.monthOffset++;save();render()};
 
-  cont.append(cal);
+  cont.append(cal,header);
   return {cont,cal};
 }
 
@@ -243,7 +257,8 @@ function render(){
     edit.onclick=()=>{
       cal.classList.toggle("editing");
       edit.classList.toggle("active");
-      edit.textContent=cal.classList.contains("editing")?"✔️ Zakończ edycję":"✏️ Edytuj historię";
+      edit.textContent=cal.classList.contains("editing")
+        ?"✔️ Zakończ edycję":"✏️ Edytuj historię";
     };
 
     div.querySelector(".done").onclick=()=>{
@@ -283,9 +298,12 @@ document.getElementById("addBtn").onclick=()=>{
   const n=prompt("Nazwa passy:");
   if(n){
     habits.push({
-      name:n,streak:0,
-      datesDone:[],freezeDates:[],
-      freeze:false,monthOffset:0
+      name:n,
+      streak:0,
+      datesDone:[],
+      freezeDates:[],
+      freeze:false,
+      monthOffset:0
     });
     save();render();
   }
