@@ -8,8 +8,6 @@
 <title>Keepy – Keep Going</title>
 <link rel="icon" href="icon.png">
 
-
-
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3b82f6">
 <link rel="apple-touch-icon" href="icon.png">
@@ -75,10 +73,6 @@ input, textarea, [contenteditable]{
   -moz-user-select:text;
   -ms-user-select:text;
   user-select:text;
-}
-
-.drag-handle{
-  touch-action:none;
 }
 
 .header{text-align:center;margin-bottom:10px;position:relative}
@@ -147,11 +141,14 @@ h1{margin:6px 0 2px;color:var(--accent)}
   z-index:1;
 }
 .habit.show{opacity:1;transform:none}
-.habit.dragging{opacity:0.5;transform:scale(0.98)}
 .habit.menu-open{z-index:200}
 .habit.editing-mode{
   border:2px solid #f97316;
   box-shadow:0 0 0 3px rgba(249,115,22,0.2);
+}
+.habit.move-mode{
+  border:2px solid #8b5cf6;
+  box-shadow:0 0 0 3px rgba(139,92,246,0.2);
 }
 
 .habit.ice::after{
@@ -220,6 +217,38 @@ h1{margin:6px 0 2px;color:var(--accent)}
 .done{background:var(--success);color:white}
 .freeze{background:var(--warning);color:black}
 .more{background:var(--bg-tertiary);color:var(--text-primary);font-size:18px;min-width:38px;flex:0}
+
+.move-buttons{
+  display:none;
+  gap:8px;
+  margin-top:12px;
+  padding:12px;
+  background:var(--bg-tertiary);
+  border-radius:10px;
+}
+.move-buttons.show{
+  display:flex;
+}
+.move-buttons button{
+  flex:1;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:var(--accent);
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+  min-height:44px;
+  transition:transform .2s, opacity .2s;
+}
+.move-buttons button:active{
+  transform:scale(0.95);
+  opacity:0.8;
+}
+.move-buttons button:disabled{
+  opacity:0.3;
+  cursor:not-allowed;
+}
 
 .menu{
   position:absolute;right:12px;top:52px;
@@ -308,8 +337,18 @@ h1{margin:6px 0 2px;color:var(--accent)}
   flex:1;text-align:center;
 }
 .calendar-nav button{
-  background:var(--bg-tertiary);color:var(--text-primary);border:none;padding:6px 12px;border-radius:4px;
+  background:var(--bg-tertiary);color:var(--text-primary);border:none;
+  padding:8px 14px;border-radius:8px;
   cursor:pointer;flex-shrink:0;
+  font-size:16px;
+  min-height:44px;
+  min-width:44px;
+  transition:transform .2s, opacity .2s;
+  touch-action:manipulation;
+}
+.calendar-nav button:active{
+  transform:scale(0.95);
+  opacity:0.8;
 }
 
 .calendar-days{
@@ -401,16 +440,6 @@ h1{margin:6px 0 2px;color:var(--accent)}
 .quote-text{
   font-style:italic;color:var(--text-primary);
   font-size:15px;line-height:1.5;
-}
-.quote-refresh{
-  position:absolute;right:12px;top:12px;
-  background:var(--bg-tertiary);border:none;
-  width:36px;height:36px;border-radius:50%;
-  font-size:16px;cursor:pointer;
-  transition:transform .3s;
-}
-.quote-refresh:active{
-  transform:rotate(180deg);
 }
 
 .empty-state{
@@ -610,6 +639,7 @@ const themes=['dark','light','ocean'];
 let currentTheme=0;
 let deletedHabit=null;
 let deletedIndex=null;
+let movingHabitIndex=null;
 
 const defaultQuotes=[
   {
@@ -627,7 +657,6 @@ const defaultQuotes=[
     en: "Every day is a new chance to be a better version of yourself.",
     es: "Cada día es una nueva oportunidad para ser mejor."
   },
-  
   {
     pl: "Nawyki budują przyszłość, którą sobie wymarzyłeś.",
     en: "Habits build the future you dreamed of.",
@@ -680,7 +709,7 @@ const defaultQuotes=[
   },
   {
     pl: "Jeśli chcesz mieć satysfakcjonujące życie, musisz wstawać z determinacją.",
-    en: "If you want to have a satisfactory life, you’ve got to get up with determination.",
+    en: "If you want to have a satisfactory life, you've got to get up with determination.",
     es: "Si quieres tener una vida satisfactoria, debes levantarte con determinación."
   },
   {
@@ -705,7 +734,7 @@ const defaultQuotes=[
   },
   {
     pl: "Jeśli jesteś w lesie i nie wiesz, dokąd iść – zacznij iść.",
-    en: "If you are in the woods and you don’t know where to go, start walking.",
+    en: "If you are in the woods and you don't know where to go, start walking.",
     es: "Si estás en el bosque y no sabes a dónde ir, empieza a caminar."
   },
   {
@@ -790,7 +819,7 @@ const defaultQuotes=[
   },
   {
     pl: "Im więcej się uczę, tym bardziej zdaję sobie sprawę, jak mało wiem.",
-    en: "The more I learn, the more I realize how much I don’t know.",
+    en: "The more I learn, the more I realize how much I don't know.",
     es: "Cuanto más aprendo, más me doy cuenta de lo poco que sé."
   },
   {
@@ -798,7 +827,6 @@ const defaultQuotes=[
     en: "The thing we fear the most is often the thing we avoid the most.",
     es: "Aquello que más tememos suele ser aquello que más evitamos."
   }
-
 ];
 
 let currentQuoteIndex=0;
@@ -830,7 +858,6 @@ function getDailyQuote(){
   const savedIndex=localStorage.getItem('quoteIndex');
   const currentDate=today();
   
-  // Check if we need new quote (new day)
   if(savedDate!==currentDate || !savedIndex){
     currentQuoteIndex=Math.floor(Math.random()*defaultQuotes.length);
     localStorage.setItem('quoteDate',currentDate);
@@ -891,7 +918,6 @@ startCountdown();
 let habits=JSON.parse(localStorage.getItem("keepy"))||[];
 const save=()=>localStorage.setItem("keepy",JSON.stringify(habits));
 
-// Theme toggle
 document.getElementById("themeBtn").onclick=()=>{
   currentTheme=(currentTheme+1)%themes.length;
   document.body.setAttribute('data-theme',themes[currentTheme]);
@@ -914,7 +940,6 @@ function updateStats(){
     });
     if(h.streak>max)max=h.streak;
     
-    // Category stats
     const cat=h.category||'other';
     if(!categoryCount[cat])categoryCount[cat]={count:0,days:0};
     categoryCount[cat].count++;
@@ -925,19 +950,16 @@ function updateStats(){
   maxStreak.textContent=max;
   avgDaily.textContent=(total/days).toFixed(2);
   
-  // Category stats display
   const categoryStats=document.getElementById("categoryStats");
   const categoryStatsList=document.getElementById("categoryStatsList");
-  const sortButtons=document.getElementById("categorySortButtons");
   
-  window.categoryData=categoryCount; // Store for sorting
+  window.categoryData=categoryCount;
   
   if(Object.keys(categoryCount).length>0){
     categoryStats.style.display='block';
     renderCategoryStats();
   }
   
-  // Heat map
   const heatMap=document.getElementById("heatMap");
   heatMap.innerHTML="";
   for(let i=27;i>=0;i--){
@@ -964,8 +986,6 @@ function renderCategoryStats(){
   if(!window.categoryData) return;
   
   let entries=Object.entries(window.categoryData);
-  
-  // Always sort by days (descending)
   entries.sort((a,b)=>b[1].days-a[1].days);
   
   categoryStatsList.innerHTML='';
@@ -981,7 +1001,7 @@ function renderCategoryStats(){
   });
 }
 
-function renderCalendar(h){
+function renderCalendar(h, habitIndex){
   const cont=document.createElement("div");
   cont.className="calendar-container";
 
@@ -996,9 +1016,9 @@ function renderCalendar(h){
   const nav=document.createElement("div");
   nav.className="calendar-nav";
   const l=document.createElement("button");
-  l.textContent="<";
+  l.textContent="◀";
   const r=document.createElement("button");
-  r.textContent=">";
+  r.textContent="▶";
   const title=document.createElement("span");
   title.textContent=ref.toLocaleString("pl-PL",{month:"long",year:"numeric"});
 
@@ -1006,22 +1026,19 @@ function renderCalendar(h){
   cal.append(nav);
 
   l.onclick=(e)=>{
+    e.preventDefault();
     e.stopPropagation();
     h.monthOffset--;
     save();
-    // Re-render only calendar, not entire habit
-    const newCalendar=renderCalendar(h);
-    cont.innerHTML='';
-    cont.append(newCalendar.cal);
+    updateSingleCalendar(habitIndex);
   }
+  
   r.onclick=(e)=>{
+    e.preventDefault();
     e.stopPropagation();
     h.monthOffset++;
     save();
-    // Re-render only calendar, not entire habit
-    const newCalendar=renderCalendar(h);
-    cont.innerHTML='';
-    cont.append(newCalendar.cal);
+    updateSingleCalendar(habitIndex);
   }
 
   const daysContainer=document.createElement("div");
@@ -1046,7 +1063,9 @@ function renderCalendar(h){
     else if(diff>0) div.classList.add("missed");
     if(!editable) div.classList.add("locked");
 
-    div.onclick=()=>{
+    div.onclick=(e)=>{
+      e.preventDefault();
+      e.stopPropagation();
       if(!h.editing || !editable) return;
       if(h.datesDone.includes(ds)){
         h.datesDone=h.datesDone.filter(x=>x!==ds);
@@ -1056,7 +1075,6 @@ function renderCalendar(h){
         div.classList.add('done');
       }
       save();
-      // Update stats without re-rendering entire page
       updateStats();
     };
 
@@ -1068,7 +1086,18 @@ function renderCalendar(h){
   return {cont,cal};
 }
 
-let draggedIndex=null;
+function updateSingleCalendar(habitIndex){
+  const h=habits[habitIndex];
+  const habitDiv=list.children[habitIndex];
+  if(!habitDiv) return;
+  
+  const calendarContainer=habitDiv.querySelector('.calendar-container');
+  if(!calendarContainer) return;
+  
+  const {cont}=renderCalendar(h, habitIndex);
+  calendarContainer.innerHTML='';
+  calendarContainer.append(cont.firstChild);
+}
 
 function getCategoryLabel(category){
   const defaultLabels={
@@ -1094,6 +1123,15 @@ function getCategoryColor(category){
   return defaultColors[category]||'#10b981';
 }
 
+function moveHabit(fromIndex, toIndex){
+  if(fromIndex===toIndex) return;
+  const temp=habits[fromIndex];
+  habits.splice(fromIndex,1);
+  habits.splice(toIndex,0,temp);
+  save();
+  render();
+}
+
 function render(){
   const emptyState=document.getElementById("emptyState");
   const categoryStats=document.getElementById("categoryStats");
@@ -1107,8 +1145,6 @@ function render(){
   }
   
   emptyState.style.display='none';
-  
-  // Show loading skeletons
   list.innerHTML='<div class="loading-skeleton"></div><div class="loading-skeleton"></div>';
   
   setTimeout(()=>{
@@ -1117,13 +1153,13 @@ function render(){
       const div=document.createElement("div");
       div.className="habit";
       if(h.editing) div.classList.add('editing-mode');
+      if(movingHabitIndex===i) div.classList.add('move-mode');
       
       div.style.borderLeftColor=getCategoryColor(h.category||'other');
       
       const streakEmoji=h.streakEmoji||'🔥';
 
       div.innerHTML=`
-        <div class="drag-handle" draggable="true" style="cursor:move;padding:4px;margin:-16px -16px 8px -16px;background:var(--bg-tertiary);border-radius:14px 14px 0 0;text-align:center;color:var(--text-secondary);font-size:20px">⋮⋮</div>
         <span class="category-badge cat-${h.category||'other'}">${getCategoryLabel(h.category||'other')}</span>
         <div class="habit-header">
           <div class="habit-info">
@@ -1137,156 +1173,189 @@ function render(){
           </div>
         </div>
         <div class="menu">
+          <button class="moveHabit">↕️ Przenieś passę</button>
           <button class="editHist">✏️ Edytuj historię</button>
           <button class="renameHabit">✍️ Zmień nazwę</button>
           <button class="changeCat">🏷️ Zmień kategorię</button>
           <button class="changeEmoji">🔥 Zmień emoji</button>
           <button class="deleteHist danger">🗑 Usuń passę</button>
         </div>
+        <div class="move-buttons" id="moveButtons-${i}">
+          <button class="moveUp" ${i===0?'disabled':''}>⬆️ W górę</button>
+          <button class="moveDown" ${i===habits.length-1?'disabled':''}>⬇️ W dół</button>
+          <button class="moveCancel">✖️ Anuluj</button>
+        </div>
       `;
 
-    // Drag & drop - only from handle
-    const handle=div.querySelector('.drag-handle');
-    handle.ondragstart=(e)=>{
-      draggedIndex=i;
-      div.classList.add('dragging');
-    };
-    handle.ondragend=()=>{
-      div.classList.remove('dragging');
-    };
-    div.ondragover=(e)=>{
-      e.preventDefault();
-    };
-    div.ondrop=(e)=>{
-      e.preventDefault();
-      if(draggedIndex!==null && draggedIndex!==i){
-        const temp=habits[draggedIndex];
-        habits.splice(draggedIndex,1);
-        habits.splice(i,0,temp);
+      const menu=div.querySelector(".menu");
+      const moreBtn=div.querySelector(".more");
+      const moveButtons=div.querySelector(".move-buttons");
+      
+      moreBtn.onclick=(e)=>{
+        e.stopPropagation();
+        document.querySelectorAll('.menu').forEach(m=>m.style.display='none');
+        document.querySelectorAll('.habit').forEach(h=>h.classList.remove('menu-open'));
+        menu.style.display=menu.style.display==="block"?"none":"block";
+        if(menu.style.display==="block"){
+          div.classList.add('menu-open');
+        }
+      };
+
+      const toggle=document.createElement("button");
+      toggle.className="toggle-cal";
+      toggle.textContent=h.calendarOpen?"📅 Ukryj kalendarz":"📅 Pokaż kalendarz";
+
+      const {cont}=renderCalendar(h, i);
+
+      toggle.onclick=(e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        h.calendarOpen=!h.calendarOpen;
+        save();
+        const calendarDiv=div.querySelector('.calendar');
+        if(h.calendarOpen){
+          calendarDiv.classList.add('show');
+          toggle.textContent="📅 Ukryj kalendarz";
+        }else{
+          calendarDiv.classList.remove('show');
+          toggle.textContent="📅 Pokaż kalendarz";
+        }
+      };
+
+      div.querySelector(".moveHabit").onclick=()=>{
+        menu.style.display="none";
+        div.classList.remove('menu-open');
+        movingHabitIndex=i;
+        div.classList.add('move-mode');
+        moveButtons.classList.add('show');
+      };
+
+      div.querySelector(".moveUp").onclick=(e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        if(i>0){
+          moveHabit(i,i-1);
+          movingHabitIndex=null;
+        }
+      };
+
+      div.querySelector(".moveDown").onclick=(e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        if(i<habits.length-1){
+          moveHabit(i,i+1);
+          movingHabitIndex=null;
+        }
+      };
+
+      div.querySelector(".moveCancel").onclick=(e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        movingHabitIndex=null;
+        div.classList.remove('move-mode');
+        moveButtons.classList.remove('show');
+      };
+
+      div.querySelector(".editHist").onclick=()=>{
+        h.editing=!h.editing;
+        if(h.editing){
+          if(!h.calendarOpen) h.calendarOpen=true;
+          div.classList.add('editing-mode');
+        }else{
+          div.classList.remove('editing-mode');
+        }
+        menu.style.display="none";
         save();
         render();
-      }
-    };
+      };
 
-    const menu=div.querySelector(".menu");
-    const moreBtn=div.querySelector(".more");
-    
-    moreBtn.onclick=(e)=>{
-      e.stopPropagation();
-      document.querySelectorAll('.menu').forEach(m=>m.style.display='none');
-      document.querySelectorAll('.habit').forEach(h=>h.classList.remove('menu-open'));
-      menu.style.display=menu.style.display==="block"?"none":"block";
-      if(menu.style.display==="block"){
-        div.classList.add('menu-open');
-      }
-    };
-
-    const toggle=document.createElement("button");
-    toggle.className="toggle-cal";
-    toggle.textContent=h.calendarOpen?"📅 Ukryj kalendarz":"📅 Pokaż kalendarz";
-
-    const {cont,cal}=renderCalendar(h);
-
-    toggle.onclick=()=>{
-      h.calendarOpen=!h.calendarOpen;
-      save();
-      // Update calendar without full re-render
-      const calendarDiv=div.querySelector('.calendar');
-      if(h.calendarOpen){
-        calendarDiv.classList.add('show');
-        toggle.textContent="📅 Ukryj kalendarz";
-      }else{
-        calendarDiv.classList.remove('show');
-        toggle.textContent="📅 Pokaż kalendarz";
-      }
-    };
-
-    div.querySelector(".editHist").onclick=()=>{
-      h.editing=!h.editing;
-      if(h.editing){
-        if(!h.calendarOpen) h.calendarOpen=true;
-        div.classList.add('editing-mode');
-      }else{
-        div.classList.remove('editing-mode');
-      }
-      menu.style.display="none";
-      save();
-      render();
-    };
-    div.querySelector(".renameHabit").onclick=()=>{
-      menu.style.display="none";
-      const newName=prompt("Nowa nazwa passy:",h.name);
-      if(newName && newName.trim()){
-        h.name=newName.trim();
-        save();
-        render();
-      }
-    };
-    div.querySelector(".changeCat").onclick=()=>{
-      menu.style.display="none";
-      const editCatModal=document.getElementById("editCategoryModal");
-      editCatModal.classList.add("show");
-      editCatModal.dataset.habitIndex=i;
-      document.getElementById("editCategorySelect").value=h.category||'other';
-    };
-    div.querySelector(".changeEmoji").onclick=()=>{
-      menu.style.display="none";
-      const emojiModal=document.getElementById("streakEmojiModal");
-      emojiModal.classList.add("show");
-      emojiModal.dataset.habitIndex=i;
-      document.getElementById("streakEmoji").value=h.streakEmoji||'';
-    };
-    div.querySelector(".deleteHist").onclick=(e)=>{
-      e.stopPropagation();
-      menu.style.display="none";
-      setTimeout(()=>{
-        if(confirm(`Jesteś pewien? Stracisz passę ${h.streakEmoji||'🔥'}${h.streak}!`)){
-          deletedHabit={...h};
-          deletedIndex=i;
-          habits.splice(i,1);
+      div.querySelector(".renameHabit").onclick=()=>{
+        menu.style.display="none";
+        const newName=prompt("Nowa nazwa passy:",h.name);
+        if(newName && newName.trim()){
+          h.name=newName.trim();
           save();
           render();
-          showToast("Passa usunięta","Cofnij",()=>{
-            habits.splice(deletedIndex,0,deletedHabit);
+        }
+      };
+
+      div.querySelector(".changeCat").onclick=()=>{
+        menu.style.display="none";
+        const editCatModal=document.getElementById("editCategoryModal");
+        editCatModal.classList.add("show");
+        editCatModal.dataset.habitIndex=i;
+        document.getElementById("editCategorySelect").value=h.category||'other';
+      };
+
+      div.querySelector(".changeEmoji").onclick=()=>{
+        menu.style.display="none";
+        const emojiModal=document.getElementById("streakEmojiModal");
+        emojiModal.classList.add("show");
+        emojiModal.dataset.habitIndex=i;
+        document.getElementById("streakEmoji").value=h.streakEmoji||'';
+      };
+
+      div.querySelector(".deleteHist").onclick=(e)=>{
+        e.stopPropagation();
+        menu.style.display="none";
+        setTimeout(()=>{
+          if(confirm(`Jesteś pewien? Stracisz passę ${h.streakEmoji||'🔥'}${h.streak}!`)){
+            deletedHabit={...h};
+            deletedIndex=i;
+            habits.splice(i,1);
             save();
             render();
-          });
+            showToast("Passa usunięta","Cofnij",()=>{
+              habits.splice(deletedIndex,0,deletedHabit);
+              save();
+              render();
+            });
+          }
+        },100);
+      };
+
+      div.querySelector(".done").onclick=(e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        if(h.freeze) return;
+        if(!h.datesDone.includes(today())){
+          h.datesDone.push(today());
+          h.streak++;
+          save();
+          render();
+          setTimeout(()=>{
+            const streakEl=document.getElementById(`streak-${i}`);
+            if(streakEl){
+              const numberEl=streakEl.querySelector('.streak-number');
+              if(numberEl){
+                numberEl.style.animation='none';
+                setTimeout(()=>{
+                  numberEl.style.animation='slideDown .4s ease-out';
+                },10);
+              }
+            }
+          },50);
         }
-      },100);
-    };
-    div.querySelector(".done").onclick=()=>{
-      if(h.freeze) return;
-      if(!h.datesDone.includes(today())){
-        h.datesDone.push(today());
-        h.streak++;
+      };
+
+      div.querySelector(".freeze").onclick=(e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        h.freeze=!h.freeze;
+        div.classList.add("ice");
+        setTimeout(()=>div.classList.remove("ice"),800);
         save();
         render();
-        // Animate streak - add class to trigger animation
-        setTimeout(()=>{
-          const streakEl=document.getElementById(`streak-${i}`);
-          if(streakEl){
-            const numberEl=streakEl.querySelector('.streak-number');
-            if(numberEl){
-              numberEl.style.animation='none';
-              setTimeout(()=>{
-                numberEl.style.animation='slideDown .4s ease-out';
-              },10);
-            }
-          }
-        },50);
-      }
-    };
-    div.querySelector(".freeze").onclick=()=>{h.freeze=!h.freeze; div.classList.add("ice"); setTimeout(()=>div.classList.remove("ice"),800); save(); render();};
+      };
 
-    div.append(toggle,cont);
-    list.append(div);
-    setTimeout(()=>div.classList.add("show"),10+i*50);
-  });
-  updateStats();
-  },100); // End of setTimeout for loading skeleton
+      div.append(toggle,cont,moveButtons);
+      list.append(div);
+      setTimeout(()=>div.classList.add("show"),10+i*50);
+    });
+    updateStats();
+  },100);
 }
 
-// Modal
 const modal=document.getElementById("addModal");
 document.getElementById("addBtn").onclick=()=>{
   modal.classList.add("show");
@@ -1324,7 +1393,6 @@ modal.onclick=(e)=>{
   if(e.target===modal) modal.classList.remove("show");
 };
 
-// Edit Category Modal
 const editCatModal=document.getElementById("editCategoryModal");
 
 document.getElementById("editCategorySelect").onchange=(e)=>{
@@ -1355,7 +1423,6 @@ editCatModal.onclick=(e)=>{
   if(e.target===editCatModal) editCatModal.classList.remove("show");
 };
 
-// Streak Emoji Modal
 const streakEmojiModal=document.getElementById("streakEmojiModal");
 
 document.getElementById("cancelStreakEmojiBtn").onclick=()=>{
@@ -1375,7 +1442,6 @@ streakEmojiModal.onclick=(e)=>{
   if(e.target===streakEmojiModal) streakEmojiModal.classList.remove("show");
 };
 
-// Language flags
 document.querySelectorAll('.lang-flag').forEach(btn=>{
   btn.onclick=(e)=>{
     e.stopPropagation();
@@ -1383,11 +1449,9 @@ document.querySelectorAll('.lang-flag').forEach(btn=>{
   };
 });
 
-// Restore saved language
 const savedLang=localStorage.getItem('quoteLang');
 if(savedLang) currentQuoteLang=savedLang;
 
-// Category stats toggle
 document.getElementById("categoryStatsToggle").onclick=()=>{
   const list=document.getElementById("categoryStatsList");
   const toggle=document.getElementById("categoryStatsToggle");
@@ -1400,7 +1464,6 @@ document.getElementById("categoryStatsToggle").onclick=()=>{
   }
 };
 
-// Heat map toggle
 document.getElementById("heatMapToggle").onclick=()=>{
   const container=document.getElementById("heatMapContainer");
   const toggle=document.getElementById("heatMapToggle");
@@ -1413,7 +1476,6 @@ document.getElementById("heatMapToggle").onclick=()=>{
   }
 };
 
-// Settings button - add to header for managing quotes
 const settingsBtn=document.createElement("button");
 settingsBtn.className="theme-toggle";
 settingsBtn.style.left="0";
@@ -1429,7 +1491,6 @@ settingsBtn.onclick=()=>{
 };
 document.querySelector(".header").append(settingsBtn);
 
-// Manage Quotes Modal
 const quotesModal=document.getElementById("manageQuotesModal");
 
 document.getElementById("cancelQuotesBtn").onclick=()=>{
@@ -1451,10 +1512,8 @@ quotesModal.onclick=(e)=>{
   if(e.target===quotesModal) quotesModal.classList.remove("show");
 };
 
-// Initialize quote
 updateQuote();
 
-// Close menu when clicking outside
 document.addEventListener('click',(e)=>{
   if(!e.target.closest('.menu') && !e.target.closest('.more')){
     document.querySelectorAll('.menu').forEach(m=>m.style.display='none');
@@ -1466,4 +1525,3 @@ render();
 </script>
 </body>
 </html>
-
