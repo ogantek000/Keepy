@@ -94,11 +94,13 @@ h1{margin:6px 0 2px;color:var(--accent)}
 #countdown{font-size:16px;font-weight:600;color:var(--text-secondary);margin:6px 0 14px}
 
 #stats{
-  display:flex;justify-content:space-around;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
   background:var(--bg-secondary);
   padding:12px;border-radius:14px;margin-bottom:14px;
 }
-#stats div{text-align:center}
+#stats div{text-align:center;padding:8px}
 #stats div div:first-child{font-size:13px;color:var(--text-secondary)}
 #stats div div:last-child{font-size:18px;font-weight:bold;color:var(--accent)}
 
@@ -128,6 +130,57 @@ h1{margin:6px 0 2px;color:var(--accent)}
 .heat-day.level-2{background:#16a34a;opacity:0.6;color:white}
 .heat-day.level-3{background:#16a34a;opacity:0.9;color:white}
 .heat-day.level-4{background:#16a34a;color:white}
+
+.folder{
+  background:var(--bg-secondary);
+  padding:12px;border-radius:14px;margin-bottom:12px;
+  border-left:4px solid var(--accent);
+}
+.folder-header{
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;
+  padding:8px;
+  border-radius:8px;
+  transition:background .2s;
+}
+.folder-header:hover{
+  background:var(--bg-tertiary);
+}
+.folder-title{
+  font-size:18px;font-weight:600;
+  display:flex;align-items:center;gap:8px;
+}
+.folder-count{
+  font-size:14px;
+  color:var(--text-secondary);
+  background:var(--bg-tertiary);
+  padding:4px 10px;
+  border-radius:12px;
+}
+.folder-content{
+  margin-top:8px;
+  display:none;
+}
+.folder-content.show{
+  display:block;
+}
+.folder-actions{
+  display:flex;gap:6px;margin-top:8px;
+}
+.folder-actions button{
+  padding:6px 12px;
+  border:none;
+  border-radius:8px;
+  background:var(--bg-tertiary);
+  color:var(--text-primary);
+  cursor:pointer;
+  font-size:13px;
+  transition:transform .2s, opacity .2s;
+}
+.folder-actions button:active{
+  transform:scale(0.95);
+  opacity:0.8;
+}
 
 .habit{
   background:var(--bg-secondary);
@@ -206,7 +259,7 @@ h1{margin:6px 0 2px;color:var(--accent)}
   font-size:13px;
   min-height:38px;
   font-weight:500;
-  transition:transform .2s, opacity .2s;
+  transition:transform .2s, opacity .2s, background .2s;
   flex:1;
   min-width:90px;
 }
@@ -215,6 +268,20 @@ h1{margin:6px 0 2px;color:var(--accent)}
   opacity:0.8;
 }
 .done{background:var(--success);color:white}
+.done.completed{
+  background:#059669;
+  opacity:0.7;
+  position:relative;
+}
+.done.completed::after{
+  content:"✓";
+  position:absolute;
+  right:8px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:16px;
+  font-weight:bold;
+}
 .freeze{background:var(--warning);color:black}
 .more{background:var(--bg-tertiary);color:var(--text-primary);font-size:18px;min-width:38px;flex:0}
 
@@ -369,6 +436,7 @@ h1{margin:6px 0 2px;color:var(--accent)}
 
 .day.done{background:var(--success);color:white}
 .day.freeze{background:var(--warning);color:black}
+.day.unfrozen{background:#6b7280;color:white}
 .day.missed{background:var(--danger);color:white}
 .day.locked{opacity:.35}
 
@@ -518,6 +586,9 @@ h1{margin:6px 0 2px;color:var(--accent)}
   <div><div>Dni wykonane</div><div id="totalDone">0</div></div>
   <div><div>Najdłuższa passa</div><div id="maxStreak">0</div></div>
   <div><div>Średnia dzienna</div><div id="avgDaily">0</div></div>
+  <div><div>Rekord życiowy</div><div id="bestEver">0</div></div>
+  <div><div>Procent miesiąca</div><div id="monthPercent">0%</div></div>
+  <div><div>Użyte freeze'y</div><div id="totalFreezes">0</div></div>
 </div>
 
 <div class="quote-box" id="quoteBox">
@@ -552,23 +623,40 @@ h1{margin:6px 0 2px;color:var(--accent)}
   <p style="color:var(--text-secondary);margin:0">Dodaj swoją pierwszą passę i buduj nawyki każdego dnia</p>
 </div>
 
+<div id="foldersContainer"></div>
 <div id="list"></div>
 <button class="add" id="addBtn">+</button>
 
 <div class="modal" id="addModal">
   <div class="modal-content">
-    <h3>➕ Dodaj nową passę</h3>
-    <input type="text" id="habitName" placeholder="Nazwa passy">
-    <select id="habitCategory">
-      <option value="sport">🏃 Sport</option>
-      <option value="health">💚 Zdrowie</option>
-      <option value="work">💼 Praca</option>
-      <option value="study">📚 Nauka</option>
-      <option value="hobby">🎨 Hobby</option>
-      <option value="other">⚪ Inne</option>
-      <option value="custom">➕ Własna kategoria...</option>
-    </select>
-    <input type="text" id="customCategory" placeholder="Wpisz nazwę własnej kategorii" style="display:none">
+    <h3 id="addModalTitle">➕ Dodaj nową passę</h3>
+    <div style="margin-bottom:12px">
+      <label style="font-size:14px;color:var(--text-secondary);display:block;margin-bottom:8px">Typ:</label>
+      <div style="display:flex;gap:8px">
+        <button id="addTypeHabit" style="flex:1;padding:10px;border:2px solid var(--accent);background:var(--accent);color:white;border-radius:8px;cursor:pointer;font-weight:600">📝 Passa</button>
+        <button id="addTypeFolder" style="flex:1;padding:10px;border:2px solid var(--bg-tertiary);background:var(--bg-tertiary);color:var(--text-primary);border-radius:8px;cursor:pointer;font-weight:600">📁 Folder</button>
+      </div>
+    </div>
+    <div id="habitFields">
+      <input type="text" id="habitName" placeholder="Nazwa passy">
+      <select id="habitCategory">
+        <option value="sport">🏃 Sport</option>
+        <option value="health">💚 Zdrowie</option>
+        <option value="work">💼 Praca</option>
+        <option value="study">📚 Nauka</option>
+        <option value="hobby">🎨 Hobby</option>
+        <option value="other">⚪ Inne</option>
+        <option value="custom">➕ Własna kategoria...</option>
+      </select>
+      <input type="text" id="customCategory" placeholder="Wpisz nazwę własnej kategorii" style="display:none">
+      <select id="habitFolder">
+        <option value="">Bez folderu</option>
+      </select>
+    </div>
+    <div id="folderFields" style="display:none">
+      <input type="text" id="folderName" placeholder="Nazwa folderu">
+      <input type="text" id="folderEmoji" placeholder="Emoji folderu (np. 💪, 🎯, 📚)" maxlength="2">
+    </div>
     <div class="modal-buttons">
       <button class="btn-secondary" id="cancelBtn">Anuluj</button>
       <button class="btn-primary" id="saveBtn">Zapisz</button>
@@ -635,11 +723,13 @@ h1{margin:6px 0 2px;color:var(--accent)}
 <script>
 const DAY=86400000;
 const list=document.getElementById("list");
+const foldersContainer=document.getElementById("foldersContainer");
 const themes=['dark','light','ocean'];
 let currentTheme=0;
 let deletedHabit=null;
 let deletedIndex=null;
 let movingHabitIndex=null;
+let addingType='habit';
 
 const defaultQuotes=[
   {
@@ -866,6 +956,12 @@ function getDailyQuote(){
     currentQuoteIndex=parseInt(savedIndex);
   }
   
+  // Safety check - make sure index is valid
+  if(currentQuoteIndex>=defaultQuotes.length){
+    currentQuoteIndex=0;
+    localStorage.setItem('quoteIndex','0');
+  }
+  
   return defaultQuotes[currentQuoteIndex][currentQuoteLang];
 }
 
@@ -916,7 +1012,11 @@ function startCountdown(){
 startCountdown();
 
 let habits=JSON.parse(localStorage.getItem("keepy"))||[];
-const save=()=>localStorage.setItem("keepy",JSON.stringify(habits));
+let folders=JSON.parse(localStorage.getItem("keepyFolders"))||[];
+const save=()=>{
+  localStorage.setItem("keepy",JSON.stringify(habits));
+  localStorage.setItem("keepyFolders",JSON.stringify(folders));
+};
 
 document.getElementById("themeBtn").onclick=()=>{
   currentTheme=(currentTheme+1)%themes.length;
@@ -933,26 +1033,49 @@ if(savedTheme){
 }
 
 function updateStats(){
-  let total=0,max=0,dates={},categoryCount={};
+  let total=0,max=0,bestEver=0,dates={},categoryCount={},totalFreezes=0;
+  
   habits.forEach(h=>{
+    // Initialize bestStreak if it doesn't exist
+    if(!h.bestStreak) h.bestStreak=0;
+    if(!h.freezeDates) h.freezeDates=[];
+    
     h.datesDone.forEach(d=>{
       total++;dates[d]=(dates[d]||0)+1;
     });
     if(h.streak>max)max=h.streak;
+    if(h.bestStreak>bestEver)bestEver=h.bestStreak;
+    totalFreezes+=h.freezeDates.length;
     
     const cat=h.category||'other';
     if(!categoryCount[cat])categoryCount[cat]={count:0,days:0};
     categoryCount[cat].count++;
     categoryCount[cat].days+=h.datesDone.length;
   });
+  
   const days=Object.keys(dates).length||1;
   totalDone.textContent=total;
   maxStreak.textContent=max;
   avgDaily.textContent=(total/days).toFixed(2);
+  document.getElementById('bestEver').textContent=bestEver;
+  document.getElementById('totalFreezes').textContent=totalFreezes;
+  
+  // Oblicz procent miesiąca
+  const now=new Date();
+  const year=now.getFullYear();
+  const month=now.getMonth();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const currentDay=now.getDate();
+  
+  let doneDaysThisMonth=0;
+  for(let d=1;d<=currentDay;d++){
+    const dateStr=new Date(year,month,d).toISOString().slice(0,10);
+    if(dates[dateStr])doneDaysThisMonth++;
+  }
+  const monthPercent=currentDay>0?((doneDaysThisMonth/currentDay)*100).toFixed(0):0;
+  document.getElementById('monthPercent').textContent=`${monthPercent}%`;
   
   const categoryStats=document.getElementById("categoryStats");
-  const categoryStatsList=document.getElementById("categoryStatsList");
-  
   window.categoryData=categoryCount;
   
   if(Object.keys(categoryCount).length>0){
@@ -1058,9 +1181,25 @@ function renderCalendar(h, habitIndex){
     div.className="day";
     div.textContent=d;
 
-    if(h.datesDone.includes(ds)) div.classList.add("done");
-    else if(h.freezeDates.includes(ds)) div.classList.add("freeze");
-    else if(diff>0) div.classList.add("missed");
+    // Initialize freezeDates if it doesn't exist
+    if(!h.freezeDates) h.freezeDates=[];
+
+    // POPRAWKA: sprawdzamy czy dzień był zamrożony, ale później odmrożony
+    const wasFrozen=h.freezeDates.includes(ds);
+    const isDone=h.datesDone.includes(ds);
+    
+    if(wasFrozen && !h.freeze){
+      // był zamrożony ale już nie jest - szary
+      div.classList.add("unfrozen");
+    }else if(h.freeze && ds===today()){
+      // aktualnie zamrożony dzisiaj - żółty
+      div.classList.add("freeze");
+    }else if(isDone){
+      div.classList.add("done");
+    }else if(diff>0){
+      div.classList.add("missed");
+    }
+    
     if(!editable) div.classList.add("locked");
 
     div.onclick=(e)=>{
@@ -1088,6 +1227,8 @@ function renderCalendar(h, habitIndex){
 
 function updateSingleCalendar(habitIndex){
   const h=habits[habitIndex];
+  if(!h) return;
+  
   const habitDiv=list.children[habitIndex];
   if(!habitDiv) return;
   
@@ -1132,12 +1273,326 @@ function moveHabit(fromIndex, toIndex){
   render();
 }
 
+function renderFolders(){
+  foldersContainer.innerHTML='';
+  
+  folders.forEach((folder,folderIndex)=>{
+    const folderHabits=habits.filter(h=>h.folderId===folder.id);
+    
+    const folderDiv=document.createElement("div");
+    folderDiv.className="folder";
+    
+    const header=document.createElement("div");
+    header.className="folder-header";
+    
+    header.innerHTML=`
+      <div class="folder-title">
+        <span>${folder.emoji||'📁'}</span>
+        <span>${folder.name}</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="folder-count">${folderHabits.length}</span>
+        <span style="font-size:18px;transition:transform .2s" id="folderArrow-${folderIndex}">▼</span>
+      </div>
+    `;
+    
+    header.onclick=()=>{
+      folder.open=!folder.open;
+      save();
+      renderFolders();
+    };
+    
+    const content=document.createElement("div");
+    content.className="folder-content";
+    if(folder.open) content.classList.add('show');
+    
+    folderHabits.forEach((h,i)=>{
+      const actualIndex=habits.indexOf(h);
+      const habitDiv=createHabitElement(h,actualIndex);
+      content.append(habitDiv);
+      setTimeout(()=>habitDiv.classList.add("show"),10+i*50);
+    });
+    
+    const actions=document.createElement("div");
+    actions.className="folder-actions";
+    actions.innerHTML=`
+      <button class="renameFolder">✏️ Zmień nazwę</button>
+      <button class="deleteFolder" style="color:#ff453a">🗑 Usuń folder</button>
+    `;
+    
+    actions.querySelector('.renameFolder').onclick=()=>{
+      const newName=prompt("Nowa nazwa folderu:",folder.name);
+      if(newName && newName.trim()){
+        folder.name=newName.trim();
+        save();
+        renderFolders();
+      }
+    };
+    
+    actions.querySelector('.deleteFolder').onclick=()=>{
+      if(confirm(`Usunąć folder "${folder.name}"? Passy zostaną przeniesione do głównej listy.`)){
+        habits.forEach(h=>{
+          if(h.folderId===folder.id) delete h.folderId;
+        });
+        folders.splice(folderIndex,1);
+        save();
+        render();
+      }
+    };
+    
+    if(folder.open) content.append(actions);
+    
+    folderDiv.append(header,content);
+    foldersContainer.append(folderDiv);
+    
+    const arrow=document.getElementById(`folderArrow-${folderIndex}`);
+    if(arrow) arrow.style.transform=folder.open?'rotate(180deg)':'rotate(0deg)';
+  });
+}
+
+function createHabitElement(h,i){
+  const div=document.createElement("div");
+  div.className="habit";
+  if(h.editing) div.classList.add('editing-mode');
+  if(movingHabitIndex===i) div.classList.add('move-mode');
+  
+  div.style.borderLeftColor=getCategoryColor(h.category||'other');
+  
+  const streakEmoji=h.streakEmoji||'🔥';
+  const isDoneToday=h.datesDone.includes(today());
+
+  div.innerHTML=`
+    <span class="category-badge cat-${h.category||'other'}">${getCategoryLabel(h.category||'other')}</span>
+    <div class="habit-header">
+      <div class="habit-info">
+        <div class="name">${h.name}</div>
+        <div class="streak" id="streak-${i}"><span class="streak-number">${streakEmoji} ${h.streak}</span></div>
+      </div>
+      <div class="actions">
+        <button class="done ${isDoneToday?'completed':''}">✓ Zrobione</button>
+        <button class="freeze">${h.freeze?"❄️ Odmróż":"❄️ Freeze"}</button>
+        <button class="more">⋯</button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="moveHabit">↕️ Przenieś passę</button>
+      <button class="editHist">✏️ Edytuj historię</button>
+      <button class="renameHabit">✍️ Zmień nazwę</button>
+      <button class="changeCat">🏷️ Zmień kategorię</button>
+      <button class="changeEmoji">🔥 Zmień emoji</button>
+      <button class="moveToFolder">📁 Przenieś do folderu</button>
+      <button class="deleteHist danger">🗑 Usuń passę</button>
+    </div>
+    <div class="move-buttons" id="moveButtons-${i}">
+      <button class="moveUp" ${i===0?'disabled':''}>⬆️ W górę</button>
+      <button class="moveDown" ${i===habits.length-1?'disabled':''}>⬇️ W dół</button>
+      <button class="moveCancel">✖️ Anuluj</button>
+    </div>
+  `;
+
+  const menu=div.querySelector(".menu");
+  const moreBtn=div.querySelector(".more");
+  const moveButtons=div.querySelector(".move-buttons");
+  
+  moreBtn.onclick=(e)=>{
+    e.stopPropagation();
+    document.querySelectorAll('.menu').forEach(m=>m.style.display='none');
+    document.querySelectorAll('.habit').forEach(h=>h.classList.remove('menu-open'));
+    menu.style.display=menu.style.display==="block"?"none":"block";
+    if(menu.style.display==="block"){
+      div.classList.add('menu-open');
+    }
+  };
+
+  const toggle=document.createElement("button");
+  toggle.className="toggle-cal";
+  toggle.textContent=h.calendarOpen?"📅 Ukryj kalendarz":"📅 Pokaż kalendarz";
+
+  const {cont}=renderCalendar(h, i);
+
+  toggle.onclick=(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    h.calendarOpen=!h.calendarOpen;
+    save();
+    const calendarDiv=div.querySelector('.calendar');
+    if(h.calendarOpen){
+      calendarDiv.classList.add('show');
+      toggle.textContent="📅 Ukryj kalendarz";
+    }else{
+      calendarDiv.classList.remove('show');
+      toggle.textContent="📅 Pokaż kalendarz";
+    }
+  };
+
+  div.querySelector(".moveHabit").onclick=()=>{
+    menu.style.display="none";
+    div.classList.remove('menu-open');
+    movingHabitIndex=i;
+    div.classList.add('move-mode');
+    moveButtons.classList.add('show');
+  };
+
+  div.querySelector(".moveUp").onclick=(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(i>0){
+      moveHabit(i,i-1);
+      movingHabitIndex=null;
+    }
+  };
+
+  div.querySelector(".moveDown").onclick=(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(i<habits.length-1){
+      moveHabit(i,i+1);
+      movingHabitIndex=null;
+    }
+  };
+
+  div.querySelector(".moveCancel").onclick=(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    movingHabitIndex=null;
+    div.classList.remove('move-mode');
+    moveButtons.classList.remove('show');
+  };
+
+  div.querySelector(".editHist").onclick=()=>{
+    h.editing=!h.editing;
+    if(h.editing){
+      if(!h.calendarOpen) h.calendarOpen=true;
+      div.classList.add('editing-mode');
+    }else{
+      div.classList.remove('editing-mode');
+    }
+    menu.style.display="none";
+    save();
+    render();
+  };
+
+  div.querySelector(".renameHabit").onclick=()=>{
+    menu.style.display="none";
+    const newName=prompt("Nowa nazwa passy:",h.name);
+    if(newName && newName.trim()){
+      h.name=newName.trim();
+      save();
+      render();
+    }
+  };
+
+  div.querySelector(".changeCat").onclick=()=>{
+    menu.style.display="none";
+    const editCatModal=document.getElementById("editCategoryModal");
+    editCatModal.classList.add("show");
+    editCatModal.dataset.habitIndex=i;
+    document.getElementById("editCategorySelect").value=h.category||'other';
+  };
+
+  div.querySelector(".changeEmoji").onclick=()=>{
+    menu.style.display="none";
+    const emojiModal=document.getElementById("streakEmojiModal");
+    emojiModal.classList.add("show");
+    emojiModal.dataset.habitIndex=i;
+    document.getElementById("streakEmoji").value=h.streakEmoji||'';
+  };
+  
+  div.querySelector(".moveToFolder").onclick=()=>{
+    menu.style.display="none";
+    if(folders.length===0){
+      alert("Najpierw utwórz folder!");
+      return;
+    }
+    
+    const folderOptions=folders.map((f,idx)=>`${idx+1}. ${f.emoji||'📁'} ${f.name}`).join('\n');
+    const choice=prompt(`Wybierz folder (wpisz numer):\n0. Bez folderu\n${folderOptions}`);
+    
+    if(choice!==null){
+      const num=parseInt(choice);
+      if(num===0){
+        delete h.folderId;
+      }else if(num>0 && num<=folders.length){
+        h.folderId=folders[num-1].id;
+      }
+      save();
+      render();
+    }
+  };
+
+  div.querySelector(".deleteHist").onclick=(e)=>{
+    e.stopPropagation();
+    menu.style.display="none";
+    setTimeout(()=>{
+      if(confirm(`Jesteś pewien? Stracisz passę ${h.streakEmoji||'🔥'}${h.streak}!`)){
+        deletedHabit={...h};
+        deletedIndex=i;
+        habits.splice(i,1);
+        save();
+        render();
+        showToast("Passa usunięta","Cofnij",()=>{
+          habits.splice(deletedIndex,0,deletedHabit);
+          save();
+          render();
+        });
+      }
+    },100);
+  };
+
+  div.querySelector(".done").onclick=(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(h.freeze) return;
+    if(!h.datesDone.includes(today())){
+      h.datesDone.push(today());
+      h.streak++;
+      if(!h.bestStreak || h.streak>h.bestStreak) h.bestStreak=h.streak;
+      save();
+      render();
+      setTimeout(()=>{
+        const streakEl=document.getElementById(`streak-${i}`);
+        if(streakEl){
+          const numberEl=streakEl.querySelector('.streak-number');
+          if(numberEl){
+            numberEl.style.animation='none';
+            setTimeout(()=>{
+              numberEl.style.animation='slideDown .4s ease-out';
+            },10);
+          }
+        }
+      },50);
+    }
+  };
+
+  div.querySelector(".freeze").onclick=(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    h.freeze=!h.freeze;
+    
+    if(h.freeze){
+      if(!h.freezeDates) h.freezeDates=[];
+      if(!h.freezeDates.includes(today())){
+        h.freezeDates.push(today());
+      }
+    }
+    
+    div.classList.add("ice");
+    setTimeout(()=>div.classList.remove("ice"),800);
+    save();
+    render();
+  };
+
+  div.append(toggle,cont,moveButtons);
+  return div;
+}
+
 function render(){
   const emptyState=document.getElementById("emptyState");
   const categoryStats=document.getElementById("categoryStats");
   
-  if(habits.length===0){
+  if(habits.length===0 && folders.length===0){
     list.innerHTML="";
+    foldersContainer.innerHTML="";
     emptyState.style.display='block';
     categoryStats.style.display='none';
     updateStats();
@@ -1145,223 +1600,74 @@ function render(){
   }
   
   emptyState.style.display='none';
+  
+  // Render folders
+  renderFolders();
+  
+  // Render habits without folder
   list.innerHTML='<div class="loading-skeleton"></div><div class="loading-skeleton"></div>';
   
   setTimeout(()=>{
     list.innerHTML="";
-    habits.forEach((h,i)=>{
-      const div=document.createElement("div");
-      div.className="habit";
-      if(h.editing) div.classList.add('editing-mode');
-      if(movingHabitIndex===i) div.classList.add('move-mode');
-      
-      div.style.borderLeftColor=getCategoryColor(h.category||'other');
-      
-      const streakEmoji=h.streakEmoji||'🔥';
-
-      div.innerHTML=`
-        <span class="category-badge cat-${h.category||'other'}">${getCategoryLabel(h.category||'other')}</span>
-        <div class="habit-header">
-          <div class="habit-info">
-            <div class="name">${h.name}</div>
-            <div class="streak" id="streak-${i}"><span class="streak-number">${streakEmoji} ${h.streak}</span></div>
-          </div>
-          <div class="actions">
-            <button class="done">✓ Zrobione</button>
-            <button class="freeze">${h.freeze?"❄️ Odmróź":"❄️ Freeze"}</button>
-            <button class="more">⋯</button>
-          </div>
-        </div>
-        <div class="menu">
-          <button class="moveHabit">↕️ Przenieś passę</button>
-          <button class="editHist">✏️ Edytuj historię</button>
-          <button class="renameHabit">✍️ Zmień nazwę</button>
-          <button class="changeCat">🏷️ Zmień kategorię</button>
-          <button class="changeEmoji">🔥 Zmień emoji</button>
-          <button class="deleteHist danger">🗑 Usuń passę</button>
-        </div>
-        <div class="move-buttons" id="moveButtons-${i}">
-          <button class="moveUp" ${i===0?'disabled':''}>⬆️ W górę</button>
-          <button class="moveDown" ${i===habits.length-1?'disabled':''}>⬇️ W dół</button>
-          <button class="moveCancel">✖️ Anuluj</button>
-        </div>
-      `;
-
-      const menu=div.querySelector(".menu");
-      const moreBtn=div.querySelector(".more");
-      const moveButtons=div.querySelector(".move-buttons");
-      
-      moreBtn.onclick=(e)=>{
-        e.stopPropagation();
-        document.querySelectorAll('.menu').forEach(m=>m.style.display='none');
-        document.querySelectorAll('.habit').forEach(h=>h.classList.remove('menu-open'));
-        menu.style.display=menu.style.display==="block"?"none":"block";
-        if(menu.style.display==="block"){
-          div.classList.add('menu-open');
-        }
-      };
-
-      const toggle=document.createElement("button");
-      toggle.className="toggle-cal";
-      toggle.textContent=h.calendarOpen?"📅 Ukryj kalendarz":"📅 Pokaż kalendarz";
-
-      const {cont}=renderCalendar(h, i);
-
-      toggle.onclick=(e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        h.calendarOpen=!h.calendarOpen;
-        save();
-        const calendarDiv=div.querySelector('.calendar');
-        if(h.calendarOpen){
-          calendarDiv.classList.add('show');
-          toggle.textContent="📅 Ukryj kalendarz";
-        }else{
-          calendarDiv.classList.remove('show');
-          toggle.textContent="📅 Pokaż kalendarz";
-        }
-      };
-
-      div.querySelector(".moveHabit").onclick=()=>{
-        menu.style.display="none";
-        div.classList.remove('menu-open');
-        movingHabitIndex=i;
-        div.classList.add('move-mode');
-        moveButtons.classList.add('show');
-      };
-
-      div.querySelector(".moveUp").onclick=(e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        if(i>0){
-          moveHabit(i,i-1);
-          movingHabitIndex=null;
-        }
-      };
-
-      div.querySelector(".moveDown").onclick=(e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        if(i<habits.length-1){
-          moveHabit(i,i+1);
-          movingHabitIndex=null;
-        }
-      };
-
-      div.querySelector(".moveCancel").onclick=(e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        movingHabitIndex=null;
-        div.classList.remove('move-mode');
-        moveButtons.classList.remove('show');
-      };
-
-      div.querySelector(".editHist").onclick=()=>{
-        h.editing=!h.editing;
-        if(h.editing){
-          if(!h.calendarOpen) h.calendarOpen=true;
-          div.classList.add('editing-mode');
-        }else{
-          div.classList.remove('editing-mode');
-        }
-        menu.style.display="none";
-        save();
-        render();
-      };
-
-      div.querySelector(".renameHabit").onclick=()=>{
-        menu.style.display="none";
-        const newName=prompt("Nowa nazwa passy:",h.name);
-        if(newName && newName.trim()){
-          h.name=newName.trim();
-          save();
-          render();
-        }
-      };
-
-      div.querySelector(".changeCat").onclick=()=>{
-        menu.style.display="none";
-        const editCatModal=document.getElementById("editCategoryModal");
-        editCatModal.classList.add("show");
-        editCatModal.dataset.habitIndex=i;
-        document.getElementById("editCategorySelect").value=h.category||'other';
-      };
-
-      div.querySelector(".changeEmoji").onclick=()=>{
-        menu.style.display="none";
-        const emojiModal=document.getElementById("streakEmojiModal");
-        emojiModal.classList.add("show");
-        emojiModal.dataset.habitIndex=i;
-        document.getElementById("streakEmoji").value=h.streakEmoji||'';
-      };
-
-      div.querySelector(".deleteHist").onclick=(e)=>{
-        e.stopPropagation();
-        menu.style.display="none";
-        setTimeout(()=>{
-          if(confirm(`Jesteś pewien? Stracisz passę ${h.streakEmoji||'🔥'}${h.streak}!`)){
-            deletedHabit={...h};
-            deletedIndex=i;
-            habits.splice(i,1);
-            save();
-            render();
-            showToast("Passa usunięta","Cofnij",()=>{
-              habits.splice(deletedIndex,0,deletedHabit);
-              save();
-              render();
-            });
-          }
-        },100);
-      };
-
-      div.querySelector(".done").onclick=(e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        if(h.freeze) return;
-        if(!h.datesDone.includes(today())){
-          h.datesDone.push(today());
-          h.streak++;
-          save();
-          render();
-          setTimeout(()=>{
-            const streakEl=document.getElementById(`streak-${i}`);
-            if(streakEl){
-              const numberEl=streakEl.querySelector('.streak-number');
-              if(numberEl){
-                numberEl.style.animation='none';
-                setTimeout(()=>{
-                  numberEl.style.animation='slideDown .4s ease-out';
-                },10);
-              }
-            }
-          },50);
-        }
-      };
-
-      div.querySelector(".freeze").onclick=(e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        h.freeze=!h.freeze;
-        div.classList.add("ice");
-        setTimeout(()=>div.classList.remove("ice"),800);
-        save();
-        render();
-      };
-
-      div.append(toggle,cont,moveButtons);
+    const habitsWithoutFolder=habits.filter(h=>!h.folderId);
+    
+    habitsWithoutFolder.forEach((h,localIndex)=>{
+      const i=habits.indexOf(h);
+      const div=createHabitElement(h,i);
       list.append(div);
-      setTimeout(()=>div.classList.add("show"),10+i*50);
+      setTimeout(()=>div.classList.add("show"),10+localIndex*50);
     });
     updateStats();
   },100);
 }
 
 const modal=document.getElementById("addModal");
+
+document.getElementById("addTypeHabit").onclick=()=>{
+  addingType='habit';
+  document.getElementById("addTypeHabit").style.background='var(--accent)';
+  document.getElementById("addTypeHabit").style.borderColor='var(--accent)';
+  document.getElementById("addTypeHabit").style.color='white';
+  document.getElementById("addTypeFolder").style.background='var(--bg-tertiary)';
+  document.getElementById("addTypeFolder").style.borderColor='var(--bg-tertiary)';
+  document.getElementById("addTypeFolder").style.color='var(--text-primary)';
+  document.getElementById("habitFields").style.display='block';
+  document.getElementById("folderFields").style.display='none';
+  document.getElementById("addModalTitle").textContent='➕ Dodaj nową passę';
+};
+
+document.getElementById("addTypeFolder").onclick=()=>{
+  addingType='folder';
+  document.getElementById("addTypeFolder").style.background='var(--accent)';
+  document.getElementById("addTypeFolder").style.borderColor='var(--accent)';
+  document.getElementById("addTypeFolder").style.color='white';
+  document.getElementById("addTypeHabit").style.background='var(--bg-tertiary)';
+  document.getElementById("addTypeHabit").style.borderColor='var(--bg-tertiary)';
+  document.getElementById("addTypeHabit").style.color='var(--text-primary)';
+  document.getElementById("habitFields").style.display='none';
+  document.getElementById("folderFields").style.display='block';
+  document.getElementById("addModalTitle").textContent='📁 Dodaj nowy folder';
+};
+
 document.getElementById("addBtn").onclick=()=>{
   modal.classList.add("show");
+  addingType='habit';
+  document.getElementById("addTypeHabit").click();
   document.getElementById("habitName").value="";
   document.getElementById("habitCategory").value="sport";
   document.getElementById("customCategory").style.display="none";
+  document.getElementById("folderName").value="";
+  document.getElementById("folderEmoji").value="";
+  
+  // Update folder dropdown
+  const folderSelect=document.getElementById("habitFolder");
+  folderSelect.innerHTML='<option value="">Bez folderu</option>';
+  folders.forEach(f=>{
+    const opt=document.createElement("option");
+    opt.value=f.id;
+    opt.textContent=`${f.emoji||'📁'} ${f.name}`;
+    folderSelect.append(opt);
+  });
 };
 
 document.getElementById("habitCategory").onchange=(e)=>{
@@ -1375,17 +1681,51 @@ document.getElementById("cancelBtn").onclick=()=>{
 };
 
 document.getElementById("saveBtn").onclick=()=>{
-  const n=document.getElementById("habitName").value.trim();
-  let c=document.getElementById("habitCategory").value;
-  if(c==='custom'){
-    const custom=document.getElementById("customCategory").value.trim();
-    if(!custom) return alert("Wpisz nazwę kategorii");
-    c=custom;
-  }
-  if(n){
-    habits.push({name:n,category:c,streak:0,datesDone:[],freezeDates:[],freeze:false,monthOffset:0,calendarOpen:false,editing:false});
-    save();render();
-    modal.classList.remove("show");
+  if(addingType==='habit'){
+    const n=document.getElementById("habitName").value.trim();
+    let c=document.getElementById("habitCategory").value;
+    const folderId=document.getElementById("habitFolder").value;
+    
+    if(c==='custom'){
+      const custom=document.getElementById("customCategory").value.trim();
+      if(!custom) return alert("Wpisz nazwę kategorii");
+      c=custom;
+    }
+    if(n){
+      const newHabit={
+        name:n,
+        category:c,
+        streak:0,
+        bestStreak:0,
+        datesDone:[],
+        freezeDates:[],
+        freeze:false,
+        monthOffset:0,
+        calendarOpen:false,
+        editing:false
+      };
+      if(folderId) newHabit.folderId=folderId;
+      
+      habits.push(newHabit);
+      save();
+      render();
+      modal.classList.remove("show");
+    }
+  }else{
+    const n=document.getElementById("folderName").value.trim();
+    const emoji=document.getElementById("folderEmoji").value.trim();
+    
+    if(n){
+      folders.push({
+        id:Date.now().toString(),
+        name:n,
+        emoji:emoji||'📁',
+        open:true
+      });
+      save();
+      render();
+      modal.classList.remove("show");
+    }
   }
 };
 
