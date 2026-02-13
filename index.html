@@ -278,7 +278,6 @@ h1{margin:6px 0 2px;color:var(--accent)}
 .done{background:var(--success);color:white}
 .done.completed{
   background:#059669;
-  opacity:0.7;
   position:relative;
 }
 .done.completed::after{
@@ -293,12 +292,6 @@ h1{margin:6px 0 2px;color:var(--accent)}
 .freeze{background:var(--warning);color:black}
 .freeze.active{
   background:#ca8a04;
-  opacity:0.7;
-}
-.done.disabled, .freeze.disabled{
-  opacity:0.5;
-  cursor:not-allowed;
-  pointer-events:none;
 }
 .more{background:var(--bg-tertiary);color:var(--text-primary);font-size:18px;min-width:38px;flex:0}
 
@@ -1532,13 +1525,46 @@ function renderCalendar(h, habitIndex){
         }
       }
       
+      // Check if we cleared today - reset freeze flag if so
+      const todayDate=today();
+      if(ds===todayDate || (isWeekly && getWeekStart(ds)===getWeekStart(todayDate))){
+        const todayDone=h.datesDone.includes(todayDate);
+        const todayFrozen=h.freezeDates.includes(todayDate);
+        
+        // If today is now empty (not done and not frozen), reset the freeze flag
+        if(!todayDone && !todayFrozen){
+          h.freeze=false;
+        }
+      }
+      
       // Recalculate streak after editing
       recalculateStreak(h);
       
       save();
-      updateSingleCalendar(habitIndex);
+      
+      // Check if we need to update the buttons (if editing today)
+      if(ds===todayDate || (isWeekly && getWeekStart(ds)===getWeekStart(todayDate))){
+        // Find the parent habit element and recreate it to reset buttons
+        const habitDiv=e.target.closest('.habit');
+        if(habitDiv){
+          const habitParent=habitDiv.parentElement;
+          const newDiv=createHabitElement(h,habitIndex);
+          habitParent.replaceChild(newDiv,habitDiv);
+          setTimeout(()=>newDiv.classList.add("show"),10);
+        }
+      }else{
+        // Just update the calendar
+        updateSingleCalendar(habitIndex);
+      }
+      
       updateStats();
-      render();
+      
+      // Update the streak display
+      const streakEl=document.getElementById(`streak-${habitIndex}`);
+      if(streakEl){
+        const streakEmoji=h.streakEmoji||'🔥';
+        streakEl.innerHTML=`<span class="streak-number">${streakEmoji} ${h.streak}</span>`;
+      }
     };
 
     daysContainer.append(div);
@@ -1553,7 +1579,25 @@ function updateSingleCalendar(habitIndex){
   const h=habits[habitIndex];
   if(!h) return;
   
-  const habitDiv=list.children[habitIndex];
+  // Find the habit element - could be in folders or main list
+  let habitDiv=null;
+  
+  // Check in folders first
+  const folderDivs=document.querySelectorAll('.folder-content .habit');
+  folderDivs.forEach(div=>{
+    const streakDiv=div.querySelector(`#streak-${habitIndex}`);
+    if(streakDiv) habitDiv=div;
+  });
+  
+  // If not found in folders, check main list
+  if(!habitDiv){
+    const mainDivs=list.querySelectorAll('.habit');
+    mainDivs.forEach(div=>{
+      const streakDiv=div.querySelector(`#streak-${habitIndex}`);
+      if(streakDiv) habitDiv=div;
+    });
+  }
+  
   if(!habitDiv) return;
   
   const calendarContainer=habitDiv.querySelector('.calendar-container');
@@ -1684,14 +1728,28 @@ function createHabitElement(h,i){
   
   const streakEmoji=h.streakEmoji||'🔥';
   const isDoneToday=h.datesDone.includes(today());
-  const isFrozenToday=h.freeze;
+  const isFrozenToday=h.freezeDates && h.freezeDates.includes(today());
   const frequency=h.frequency||'daily';
   const frequencyLabel=frequency==='weekly'?'📆 Tyg.':'📅 Codz.';
   
-  // Determine button states
-  const doneClasses=isDoneToday?'done completed disabled':'done';
-  const freezeClasses=isFrozenToday?'freeze active disabled':'freeze';
-  const freezeText=isFrozenToday?"❄️ Aktywny":"❄️ Freeze";
+  // Determine button states and classes
+  let doneClasses='done';
+  let freezeClasses='freeze';
+  let freezeText='❄️ Freeze';
+  let doneStyle='';
+  let freezeStyle='';
+  
+  if(isDoneToday){
+    doneClasses='done completed';
+    doneStyle='opacity:0.7;pointer-events:none;';
+    freezeStyle='opacity:0.7;pointer-events:none;';
+  }else if(isFrozenToday){
+    doneClasses='done';
+    freezeClasses='freeze active';
+    freezeText='❄️ Aktywny';
+    doneStyle='opacity:0.7;pointer-events:none;';
+    freezeStyle='opacity:0.7;pointer-events:none;';
+  }
 
   div.innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -1704,8 +1762,8 @@ function createHabitElement(h,i){
         <div class="streak" id="streak-${i}"><span class="streak-number">${streakEmoji} ${h.streak}</span></div>
       </div>
       <div class="actions">
-        <button class="${doneClasses}">✓ Zrobione</button>
-        <button class="${freezeClasses}">${freezeText}</button>
+        <button class="${doneClasses}" style="${doneStyle}">${isDoneToday?'':''}✓ Zrobione</button>
+        <button class="${freezeClasses}" style="${freezeStyle}">${freezeText}</button>
         <button class="more">⋯</button>
       </div>
     </div>
@@ -1808,25 +1866,39 @@ function createHabitElement(h,i){
 
   div.querySelector(".editHist").onclick=()=>{
     h.editing=!h.editing;
+    menu.style.display="none";
+    div.classList.remove('menu-open');
+    
     if(h.editing){
       if(!h.calendarOpen) h.calendarOpen=true;
       div.classList.add('editing-mode');
+      
+      // Just update the calendar to show/apply editing mode
+      const calendarDiv=div.querySelector('.calendar');
+      if(calendarDiv){
+        calendarDiv.classList.add('show','editing');
+        const toggleBtn=div.querySelector('.toggle-cal');
+        if(toggleBtn) toggleBtn.textContent="📅 Ukryj kalendarz";
+      }
     }else{
       div.classList.remove('editing-mode');
+      const calendarDiv=div.querySelector('.calendar');
+      if(calendarDiv) calendarDiv.classList.remove('editing');
     }
-    menu.style.display="none";
     save();
-    render();
   };
 
   div.querySelector(".renameHabit").onclick=()=>{
     menu.style.display="none";
     submenu.style.display="none";
+    div.classList.remove('menu-open');
     const newName=prompt("Nowa nazwa passy:",h.name);
     if(newName && newName.trim()){
       h.name=newName.trim();
       save();
-      render();
+      // Update name in DOM
+      const nameEl=div.querySelector('.name');
+      if(nameEl) nameEl.textContent=h.name;
     }
   };
 
@@ -1851,13 +1923,25 @@ function createHabitElement(h,i){
   div.querySelector(".changeFreq").onclick=()=>{
     menu.style.display="none";
     submenu.style.display="none";
+    div.classList.remove('menu-open');
     const current=h.frequency||'daily';
     const newFreq=current==='daily'?'weekly':'daily';
     const label=newFreq==='weekly'?'tygodniowo':'codziennie';
     if(confirm(`Zmienić częstotliwość na: ${label}?`)){
       h.frequency=newFreq;
+      
+      // Recalculate streak for new frequency
+      recalculateStreak(h);
+      
       save();
-      render();
+      
+      // Recreate the habit element to show new frequency
+      const habitParent=div.parentElement;
+      const newDiv=createHabitElement(h,i);
+      habitParent.replaceChild(newDiv,div);
+      setTimeout(()=>newDiv.classList.add("show"),10);
+      
+      updateStats();
     }
   };
   
@@ -1912,9 +1996,18 @@ function createHabitElement(h,i){
     if(!h.datesDone.includes(today())){
       h.datesDone.push(today());
       h.streak++;
-      if(!h.bestStreak || h.streak>h.bestStreak) h.bestStreak=h.bestStreak=h.streak;
+      if(!h.bestStreak || h.streak>h.bestStreak) h.bestStreak=h.streak;
       save();
-      render();
+      
+      // Force update the entire habit element to reflect changes
+      const habitParent=div.parentElement;
+      const newDiv=createHabitElement(h,i);
+      habitParent.replaceChild(newDiv,div);
+      setTimeout(()=>newDiv.classList.add("show"),10);
+      
+      updateStats();
+      
+      // Animate streak after a brief delay
       setTimeout(()=>{
         const streakEl=document.getElementById(`streak-${i}`);
         if(streakEl){
@@ -1926,7 +2019,7 @@ function createHabitElement(h,i){
             },10);
           }
         }
-      },50);
+      },100);
     }
   };
 
@@ -1948,11 +2041,20 @@ function createHabitElement(h,i){
     if(!h.freezeDates.includes(today())){
       h.freezeDates.push(today());
     }
+    
+    save();
+    
+    // Show ice animation
     div.classList.add("ice");
     setTimeout(()=>div.classList.remove("ice"),800);
     
-    save();
-    render();
+    // Force update the entire habit element to reflect changes
+    const habitParent=div.parentElement;
+    const newDiv=createHabitElement(h,i);
+    habitParent.replaceChild(newDiv,div);
+    setTimeout(()=>newDiv.classList.add("show"),10);
+    
+    updateStats();
   };
 
   div.append(toggle,cont,moveButtons);
@@ -2127,8 +2229,25 @@ document.getElementById("saveEditCatBtn").onclick=()=>{
   }
   habits[idx].category=c;
   save();
-  render();
   editCatModal.classList.remove("show");
+  
+  // Recreate only the affected habit element
+  const h=habits[idx];
+  
+  // Find the habit div
+  let habitDiv=null;
+  const allHabits=document.querySelectorAll('.habit');
+  allHabits.forEach(div=>{
+    const streakEl=div.querySelector(`#streak-${idx}`);
+    if(streakEl) habitDiv=div;
+  });
+  
+  if(habitDiv){
+    const habitParent=habitDiv.parentElement;
+    const newDiv=createHabitElement(h,idx);
+    habitParent.replaceChild(newDiv,habitDiv);
+    setTimeout(()=>newDiv.classList.add("show"),10);
+  }
 };
 
 editCatModal.onclick=(e)=>{
@@ -2146,8 +2265,15 @@ document.getElementById("saveStreakEmojiBtn").onclick=()=>{
   const emoji=document.getElementById("streakEmoji").value.trim();
   habits[idx].streakEmoji=emoji||'🔥';
   save();
-  render();
   streakEmojiModal.classList.remove("show");
+  
+  // Update streak display
+  const streakEl=document.getElementById(`streak-${idx}`);
+  if(streakEl){
+    const h=habits[idx];
+    const streakEmoji=h.streakEmoji||'🔥';
+    streakEl.innerHTML=`<span class="streak-number">${streakEmoji} ${h.streak}</span>`;
+  }
 };
 
 streakEmojiModal.onclick=(e)=>{
