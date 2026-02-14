@@ -510,13 +510,13 @@ h1{margin:6px 0 2px;color:var(--accent)}
 .calendar-days{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 3px;
 }
 
 .calendar-weekdays{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 3px;
   margin-bottom: 8px;
 }
 
@@ -529,10 +529,12 @@ h1{margin:6px 0 2px;color:var(--accent)}
 }
 
 .day{
-  height: 32px;
-  line-height: 32px;
-  text-align: center;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 12px;
+  font-weight: 500;
   border-radius: 6px;
   background: var(--bg-tertiary);
   transition: transform .2s;
@@ -1890,10 +1892,19 @@ function createHabitElement(h,i){
   div.style.borderLeftColor=getCategoryColor(h.category||'other');
   
   const streakEmoji=h.streakEmoji||'🔥';
-  const isDoneToday=h.datesDone.includes(today());
-  const isFrozenToday=h.freezeDates && h.freezeDates.includes(today());
   const frequency=h.frequency||'daily';
   const frequencyLabel=frequency==='weekly'?'📆 Tyg.':'📅 Codz.';
+  
+  // For weekly habits, check if current week is done or frozen
+  let isDoneToday, isFrozenToday;
+  if(frequency==='weekly'){
+    const currentWeekStart=getWeekStart(today());
+    isDoneToday=hasWeekDone(h,currentWeekStart);
+    isFrozenToday=hasWeekFreeze(h,currentWeekStart);
+  }else{
+    isDoneToday=h.datesDone.includes(today());
+    isFrozenToday=h.freezeDates && h.freezeDates.includes(today());
+  }
   
   // Determine button states and classes
   let doneClasses='done';
@@ -2191,7 +2202,8 @@ function createHabitElement(h,i){
     // Check if already done or frozen
     if(isDoneToday || isFrozenToday){
       if(isFrozenToday){
-        showToast("Freeze jest aktywny na dzisiaj i nie można go cofnąć");
+        const msg=frequency==='weekly'?"Freeze jest aktywny na ten tydzień i nie można go cofnąć":"Freeze jest aktywny na dzisiaj i nie można go cofnąć";
+        showToast(msg);
       }
       return;
     }
