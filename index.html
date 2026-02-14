@@ -1512,10 +1512,10 @@ function renderCalendar(h, habitIndex){
     updateSingleCalendar(habitIndex);
   }
 
-  // Add weekday headers
+  // Add weekday headers - P(on), W(t), Ś(r), C(z), P(t), S(o), N(d)
   const weekdaysContainer=document.createElement("div");
   weekdaysContainer.className="calendar-weekdays";
-  const weekdayNames=['P','W','Ś','C','P','S','N'];
+  const weekdayNames=['Pn','Wt','Śr','Cz','Pt','So','Nd'];
   weekdayNames.forEach(name=>{
     const day=document.createElement("div");
     day.className="calendar-weekday";
