@@ -1515,7 +1515,7 @@ function renderCalendar(h, habitIndex){
   // Add weekday headers
   const weekdaysContainer=document.createElement("div");
   weekdaysContainer.className="calendar-weekdays";
-  const weekdayNames=['N','P','W','Ś','C','P','S'];
+  const weekdayNames=['P','W','Ś','C','P','S','N'];
   weekdayNames.forEach(name=>{
     const day=document.createElement("div");
     day.className="calendar-weekday";
@@ -1527,14 +1527,25 @@ function renderCalendar(h, habitIndex){
   const daysContainer=document.createElement("div");
   daysContainer.className="calendar-days";
 
+  // Fix: Use local date interpretation to avoid timezone shifts
   const first=(new Date(ref.getFullYear(),ref.getMonth(),1).getDay()+6)%7;
   const daysInMonth=new Date(ref.getFullYear(),ref.getMonth()+1,0).getDate();
 
-  for(let i=0;i<first;i++) daysContainer.append(document.createElement("div"));
+  // Add empty cells for days before month starts
+  for(let i=0;i<first;i++){
+    const emptyDiv=document.createElement("div");
+    emptyDiv.style.width="14.2%";
+    daysContainer.append(emptyDiv);
+  }
+  
   for(let d=1;d<=daysInMonth;d++){
     const date=new Date(ref.getFullYear(),ref.getMonth(),d);
-    const ds=new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10);
-    const diff=(new Date(today())-new Date(ds))/DAY;
+    // Use local date format to avoid timezone issues
+    const year=date.getFullYear();
+    const month=String(date.getMonth()+1).padStart(2,'0');
+    const day=String(date.getDate()).padStart(2,'0');
+    const ds=`${year}-${month}-${day}`;
+    const diff=(new Date(today())-new Date(ds+'T00:00:00'))/DAY;
     const isWeekly=h.frequency==='weekly';
     
     // For weekly: allow editing current week and past 2 weeks (up to 21 days back)
@@ -2648,4 +2659,3 @@ render();
 </script>
 </body>
 </html>
-
